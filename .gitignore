@@ -1,0 +1,26 @@
+.omx/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+
+# Local environment
+.env
+.env.*
+
+# Semia local runs
+.semia/
+output/

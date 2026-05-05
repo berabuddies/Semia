@@ -1,0 +1,44 @@
+[build-system]
+requires = []
+build-backend = "semia_build"
+backend-path = ["build_backend"]
+
+[project]
+name = "semia-skillscan"
+version = "0.1.0"
+description = "Skill Behavior Mapping for AI agent skill auditing."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "RiemaLabs" }]
+keywords = ["agent-skills", "static-analysis", "security", "souffle"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.40"]
+
+[project.scripts]
+semia = "semia_cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/RiemaLabs/semia-skillscan"
+Issues = "https://github.com/RiemaLabs/semia-skillscan/issues"
+
+[tool.setuptools.packages.find]
+where = [
+    "packages/semia-core/src",
+    "packages/semia-cli/src",
+]
+
+[tool.setuptools.package-data]
+semia_core = ["rules/sdl/*.dl"]

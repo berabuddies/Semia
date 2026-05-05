@@ -1,0 +1,33 @@
+// SDL core schema. Evidence predicates are intentionally absent from the
+// detector-facing schema; plugins/core align evidence as a sidecar.
+
+.type Skill <: symbol
+.type Action <: symbol
+.type Call <: symbol
+.type Value <: symbol
+
+.decl skill(s: Skill)
+.decl skill_doc_claim(s: Skill, claim: symbol)
+
+.decl action(a: Action, s: Skill)
+.decl action_trigger(a: Action, kind: symbol)
+.decl action_gate(a: Action, kind: symbol)
+.decl action_param(a: Action, name: symbol, v: Value)
+
+.decl call(c: Call, a: Action)
+.decl call_effect(c: Call, kind: symbol)
+.decl call_code(c: Call, kind: symbol)
+.decl call_action(c: Call, a: Action)
+.decl call_action_arg(c: Call, v_arg: Value, v_param: Value)
+.decl call_unconditional(c1: Call, c2: Call)
+.decl call_conditional(c1: Call, c2: Call, v: Value)
+.decl call_region(c: Call, v: Value)
+.decl call_input(c: Call, v: Value)
+.decl call_output(c: Call, v: Value)
+.decl call_region_untrusted(c: Call)
+.decl call_region_sensitive(c: Call)
+.decl call_region_secret(c: Call)
+
+.decl value(v: Value, a: Action, kind: symbol)
+.decl value_sensitive_allowed_action(v: Value, a: Action)
+.decl value_secret_allowed_action(v: Value, a: Action)

@@ -1,0 +1,41 @@
+{
+  "name": "semia-audit",
+  "version": "0.1.0",
+  "description": "Representation Synthesis workflow for auditing agent skills in Codex.",
+  "author": {
+    "name": "RiemaLabs",
+    "email": "maintainers@semia.dev",
+    "url": "https://github.com/RiemaLabs"
+  },
+  "homepage": "https://github.com/RiemaLabs/semia-skillscan",
+  "repository": "https://github.com/RiemaLabs/semia-skillscan",
+  "license": "CC-BY-NC-ND-4.0",
+  "keywords": [
+    "semia",
+    "skill-audit",
+    "datalog",
+    "security",
+    "sdl"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Semia Audit",
+    "shortDescription": "Audit agent skills with Semia SDL V2.",
+    "longDescription": "Runs a plugin-first Semia workflow where Codex performs Stage 2 evidence-backed SDL extraction and deterministic Semia tools prepare, validate, detect, and report findings.",
+    "developerName": "RiemaLabs",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/RiemaLabs/semia-skillscan",
+    "privacyPolicyURL": "https://github.com/RiemaLabs/semia-skillscan/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/RiemaLabs/semia-skillscan/blob/main/LICENSE",
+    "defaultPrompt": [
+      "semia scan ./some-skill",
+      "Run Semia audit on this skill",
+      "Audit this plugin for SDL V2 risks"
+    ],
+    "brandColor": "#2563EB"
+  }
+}

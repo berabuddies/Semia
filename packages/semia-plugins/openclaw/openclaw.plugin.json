@@ -1,0 +1,29 @@
+{
+  "name": "semia-audit",
+  "version": "0.1.0",
+  "description": "AgentSkills-compatible Semia audit plugin for OpenClaw.",
+  "publisher": "RiemaLabs",
+  "license": "CC-BY-NC-ND-4.0",
+  "homepage": "https://github.com/RiemaLabs/semia-skillscan",
+  "repository": "https://github.com/RiemaLabs/semia-skillscan",
+  "categories": [
+    "security",
+    "developer-tools",
+    "agent-skills"
+  ],
+  "skills": [
+    {
+      "name": "semia-audit",
+      "path": "./skills/semia-audit",
+      "entry": "SKILL.md",
+      "description": "Run Semia behavior audit on an agent skill using the current OpenClaw agent session for synthesis."
+    }
+  ],
+  "commands": [
+    {
+      "name": "semia scan",
+      "skill": "semia-audit",
+      "description": "Audit a skill directory with Semia."
+    }
+  ]
+}
