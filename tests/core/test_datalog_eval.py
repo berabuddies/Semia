@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Tests for the built-in pure-Python Datalog evaluator."""
 
 from __future__ import annotations

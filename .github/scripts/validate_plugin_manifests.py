@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Validate Semia plugin manifests without third-party dependencies."""
 
 from __future__ import annotations

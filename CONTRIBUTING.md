@@ -132,5 +132,5 @@ unacceptable behavior to **conduct@riema.xyz**.
 
 By contributing, you agree that your contributions will be licensed under
 the [Apache License 2.0](LICENSE), the same license that covers this
-project. Trademarks ("Semia" and the RiemaLabs marks) are
+project. Trademarks ("Semia" and the berabuddies marks) are
 **not** licensed under Apache-2.0 — see [TRADEMARKS.md](TRADEMARKS.md).

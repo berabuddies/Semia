@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """JavaScript / TypeScript source parser using regex + brace tracking.
 
 Recognizes top-level imports, function/class declarations (including

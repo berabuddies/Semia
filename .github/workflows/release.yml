@@ -12,7 +12,7 @@ name: Release
 #
 # 1. PyPI side:
 #    - Project page → Publishing → Add a new pending publisher with
-#      Owner: RiemaLabs, Repository: Semia,
+#      Owner: berabuddies, Repository: Semia,
 #      Workflow filename: release.yml, Environment: pypi.
 #
 # 2. GitHub side (PyPI environment):
@@ -137,7 +137,7 @@ jobs:
       - name: Attest build provenance for wheel and sdist
         # Mints a SLSA provenance attestation that links each built artifact
         # to this exact workflow run. Verifiers can use
-        # `gh attestation verify <file> --repo RiemaLabs/Semia`.
+        # `gh attestation verify <file> --repo berabuddies/Semia`.
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: |

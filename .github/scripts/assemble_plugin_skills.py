@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Assemble per-host plugin ``SKILL.md`` files from the shared workflow body.
 
 Each plugin host (codex, claude-code, openclaw) keeps a tiny ``_host.md``

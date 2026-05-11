@@ -2,7 +2,7 @@
 name: semia
 description: Audit an agent skill with Semia inside OpenClaw. Use when the user asks to run `semia scan <path>`, "Run Semia audit on this skill", or audit a skill/plugin for behavior risk.
 version: 0.1.0
-homepage: https://github.com/RiemaLabs/Semia
+homepage: https://github.com/berabuddies/Semia
 metadata:
   openclaw:
     requires:

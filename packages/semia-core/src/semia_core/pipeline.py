@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Artifact-oriented Semia core API used by the CLI and plugins."""
 
 from __future__ import annotations
@@ -939,7 +939,7 @@ def _sarif_payload(
         )
     driver: dict[str, Any] = {
         "name": "Semia",
-        "informationUri": "https://github.com/RiemaLabs/Semia",
+        "informationUri": "https://github.com/berabuddies/Semia",
         "rules": list(rules.values()),
     }
     if diagnostics:

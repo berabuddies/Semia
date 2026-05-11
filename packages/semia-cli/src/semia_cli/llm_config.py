@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Configuration shared by Semia LLM synthesis modules.
 
 Semia routes synthesis through one of four **providers**:

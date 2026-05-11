@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "description": "Representation Synthesis workflow for auditing agent skills in Claude Code.",
   "author": {
-    "name": "RiemaLabs",
-    "url": "https://github.com/RiemaLabs"
+    "name": "berabuddies",
+    "url": "https://github.com/berabuddies"
   },
   "license": "Apache-2.0",
-  "homepage": "https://github.com/RiemaLabs/Semia",
-  "repository": "https://github.com/RiemaLabs/Semia",
+  "homepage": "https://github.com/berabuddies/Semia",
+  "repository": "https://github.com/berabuddies/Semia",
   "keywords": [
     "semia",
     "skill-audit",

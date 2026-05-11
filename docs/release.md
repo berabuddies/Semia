@@ -12,7 +12,7 @@ secret.
 
 1. **PyPI side** — on https://pypi.org, open the project page →
    *Publishing* → *Add a new pending publisher* and fill in:
-   - Owner: `RiemaLabs`
+   - Owner: `berabuddies`
    - Repository name: `Semia`
    - Workflow filename: `release.yml`
    - Environment name: `pypi`

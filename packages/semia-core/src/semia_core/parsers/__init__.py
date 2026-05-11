@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Parsers that turn a skill source (markdown + inlined code files) into
 structured semantic units.
 

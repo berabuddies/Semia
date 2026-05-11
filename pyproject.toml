@@ -11,7 +11,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-authors = [{ name = "RiemaLabs" }]
+authors = [{ name = "berabuddies" }]
 keywords = ["agent-skills", "static-analysis", "security", "souffle"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -28,8 +28,8 @@ dependencies = []
 semia = "semia_cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/RiemaLabs/Semia"
-Issues = "https://github.com/RiemaLabs/Semia/issues"
+Homepage = "https://github.com/berabuddies/Semia"
+Issues = "https://github.com/berabuddies/Semia/issues"
 
 # PEP 735 dev tooling. `uv sync` installs the `dev` group by default; CI
 # installs the same set with `uv sync --group dev`. None of these are runtime

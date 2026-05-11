@@ -127,7 +127,7 @@ jobs:
           # Codecov rejects tokenless uploads against protected branches
           # ("Token required because branch is protected"). Set the
           # `CODECOV_TOKEN` repo secret from
-          # https://app.codecov.io/gh/RiemaLabs/Semia/settings
+          # https://app.codecov.io/gh/berabuddies/Semia/settings
           # for the badge to populate.
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false

@@ -4,8 +4,8 @@
     "displayName": "Semia",
     "shortDescription": "Skill Behavior Mapping audit toolkit for AI agent skills.",
     "longDescription": "Semia turns natural-language skill instructions and adjacent source into grounded SDL facts, then runs deterministic structural checks, evidence alignment, and Datalog detectors. The Codex plugin uses the host session for behavior synthesis and the deterministic Semia CLI for prepare/validate/detect/report.",
-    "developerName": "RiemaLabs",
-    "websiteURL": "https://github.com/RiemaLabs/Semia",
+    "developerName": "berabuddies",
+    "websiteURL": "https://github.com/berabuddies/Semia",
     "brandColor": "#2563EB"
   },
   "plugins": [
@@ -13,7 +13,7 @@
       "name": "semia",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/RiemaLabs/Semia.git",
+        "url": "https://github.com/berabuddies/Semia.git",
         "path": "./packages/semia-plugins/codex",
         "ref": "main"
       },

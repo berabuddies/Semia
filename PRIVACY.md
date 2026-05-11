@@ -2,7 +2,7 @@
 
 Semia is a local static-analysis tool. It does not collect telemetry
 or analytics, does not call home, and is not operated as a hosted service by
-RiemaLabs. This policy describes the data Semia handles on the user's machine
+berabuddies. This policy describes the data Semia handles on the user's machine
 and what it sends to the LLM providers a user explicitly configures.
 
 ## What Semia processes
@@ -42,13 +42,13 @@ network requests for that flow.
   references inside the skill are recorded as evidence rather than fetched.
 - No analytics, crash reports, version-check pings, or usage telemetry are
   emitted by the CLI, the core library, or the bundled plugins.
-- No data is sent to RiemaLabs servers. There are no RiemaLabs servers in this
+- No data is sent to berabuddies servers. There are no berabuddies servers in this
   product's runtime path.
 
 ## Data retention
 
 Run artifacts persist on the user's filesystem until the user deletes them.
-RiemaLabs cannot retrieve, delete, or modify artifacts on a user's machine.
+berabuddies cannot retrieve, delete, or modify artifacts on a user's machine.
 
 ## Logs
 

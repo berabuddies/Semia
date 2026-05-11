@@ -84,9 +84,9 @@ release pipeline.
 
 - Codex plugin with marketplace manifest at
   [.agents/plugins/marketplace.json](.agents/plugins/marketplace.json);
-  installs via `codex plugin marketplace add RiemaLabs/Semia`.
+  installs via `codex plugin marketplace add berabuddies/Semia`.
 - Claude Code plugin with `.claude-plugin/plugin.json`; installs via
-  `/plugin marketplace add RiemaLabs/Semia`.
+  `/plugin marketplace add berabuddies/Semia`.
 - OpenClaw skill published as `semia` on ClawHub; declares
   `requires.bins: [semia]` and `install: [{kind: uv, package:
   semia}]` so ClawHub provisions the CLI on first use. End
@@ -128,4 +128,4 @@ release pipeline.
   `Apache-2.0`. `package_build_check.py` and
   `validate_plugin_manifests.py` enforce it.
 
-[0.1.0]: https://github.com/RiemaLabs/Semia/releases/tag/v0.1.0
+[0.1.0]: https://github.com/berabuddies/Semia/releases/tag/v0.1.0

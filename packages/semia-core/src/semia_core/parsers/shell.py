@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Shell script parser using regex + brace tracking for functions.
 
 Distinguishes top-of-file setup blocks (``source`` / ``.`` / ``export``

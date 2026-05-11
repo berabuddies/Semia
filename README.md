@@ -3,9 +3,9 @@
 > **Security audit for AI agent skills.** Know what a skill *can* do
 > before you trust it.
 
-[![CI](https://github.com/RiemaLabs/Semia/actions/workflows/ci.yml/badge.svg)](https://github.com/RiemaLabs/Semia/actions/workflows/ci.yml)
-[![Lint](https://github.com/RiemaLabs/Semia/actions/workflows/lint.yml/badge.svg)](https://github.com/RiemaLabs/Semia/actions/workflows/lint.yml)
-[![codecov](https://codecov.io/gh/RiemaLabs/Semia/graph/badge.svg)](https://codecov.io/gh/RiemaLabs/Semia)
+[![CI](https://github.com/berabuddies/Semia/actions/workflows/ci.yml/badge.svg)](https://github.com/berabuddies/Semia/actions/workflows/ci.yml)
+[![Lint](https://github.com/berabuddies/Semia/actions/workflows/lint.yml/badge.svg)](https://github.com/berabuddies/Semia/actions/workflows/lint.yml)
+[![codecov](https://codecov.io/gh/berabuddies/Semia/graph/badge.svg)](https://codecov.io/gh/berabuddies/Semia)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
@@ -49,7 +49,7 @@ Install the plugin once. Each host has its own flow.
 *Shell (one-liner):*
 
 ```bash
-codex plugin marketplace add RiemaLabs/Semia
+codex plugin marketplace add berabuddies/Semia
 ```
 
 *Interactive plugin manager inside the Codex CLI:*
@@ -57,7 +57,7 @@ codex plugin marketplace add RiemaLabs/Semia
 1. Launch `codex`.
 2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
 3. Press **←** (Left) to enter **Add marketplace**.
-4. Enter `RiemaLabs/Semia`.
+4. Enter `berabuddies/Semia`.
 
 Either path leaves the marketplace registered; install `semia`
 from the panel or by re-running the relevant install command.
@@ -67,7 +67,7 @@ from the panel or by re-running the relevant install command.
 *Shell (one-liner):*
 
 ```bash
-claude plugin marketplace add RiemaLabs/Semia
+claude plugin marketplace add berabuddies/Semia
 ```
 
 *Interactive plugin manager inside the Claude Code CLI:*
@@ -75,7 +75,7 @@ claude plugin marketplace add RiemaLabs/Semia
 1. Launch `claude`.
 2. Inside Claude Code, input `/plugins` (plural — opens the plugin panel).
 3. Press **→** (Right) twice and select **Add Marketplace**.
-4. Enter `RiemaLabs/Semia`.
+4. Enter `berabuddies/Semia`.
 
 Either path registers the marketplace; finish installing `semia` from
 the panel or with `claude plugin install semia@semia`.
@@ -230,7 +230,7 @@ for the full host-integration contract, and
 From source (current):
 
 ```bash
-git clone https://github.com/RiemaLabs/Semia
+git clone https://github.com/berabuddies/Semia
 cd semia
 python3 -m venv --clear .venv
 source .venv/bin/activate
@@ -335,7 +335,7 @@ workflow.
 *Shell (scripts and CI):*
 
 ```bash
-codex plugin marketplace add RiemaLabs/Semia
+codex plugin marketplace add berabuddies/Semia
 ```
 
 *Interactive plugin manager inside the Codex CLI:*
@@ -343,7 +343,7 @@ codex plugin marketplace add RiemaLabs/Semia
 1. Launch `codex`.
 2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
 3. Press **←** (Left) to enter **Add marketplace**.
-4. Enter `RiemaLabs/Semia`.
+4. Enter `berabuddies/Semia`.
 5. Back in the plugin panel, install `semia` from the newly-added
    marketplace.
 
@@ -360,7 +360,7 @@ enabled = true
 *Shell (scripts and CI):*
 
 ```bash
-claude plugin marketplace add RiemaLabs/Semia
+claude plugin marketplace add berabuddies/Semia
 claude plugin install semia@semia
 ```
 
@@ -369,7 +369,7 @@ claude plugin install semia@semia
 1. Launch `claude`.
 2. Inside Claude Code, input `/plugins` (plural — opens the plugin panel).
 3. Press **→** (Right) twice and select **Add Marketplace**.
-4. Enter `RiemaLabs/Semia`.
+4. Enter `berabuddies/Semia`.
 5. Back in the plugin panel, install `semia` from the newly-added marketplace.
 
 The `name@marketplace` form on `install` is required — the second `semia`
@@ -419,7 +419,7 @@ tests/
 ## Development
 
 ```bash
-git clone https://github.com/RiemaLabs/Semia
+git clone https://github.com/berabuddies/Semia
 cd semia
 python3 -m venv --clear .venv
 source .venv/bin/activate
@@ -472,5 +472,5 @@ purposes, subject to the terms of the license. See [NOTICE](NOTICE) for
 attribution.
 
 The names **"Semia"**, **"Semia"**, **"Semia"**, and
-**"RiemaLabs"** are trademarks of RiemaLabs and are **not** licensed under
+**"berabuddies"** are trademarks of berabuddies and are **not** licensed under
 Apache-2.0. See [TRADEMARKS.md](TRADEMARKS.md) for the trademark policy.

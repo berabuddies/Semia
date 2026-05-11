@@ -1,19 +1,19 @@
 {
   "name": "semia",
   "owner": {
-    "name": "RiemaLabs",
-    "url": "https://github.com/RiemaLabs"
+    "name": "berabuddies",
+    "url": "https://github.com/berabuddies"
   },
   "plugins": [
     {
       "name": "semia",
       "source": "./packages/semia-plugins/claude-code",
       "description": "Static security audit toolkit for AI agent skills — surfaces every capability a skill may exercise, with evidence.",
-      "homepage": "https://github.com/RiemaLabs/Semia",
+      "homepage": "https://github.com/berabuddies/Semia",
       "category": "Developer Tools",
       "author": {
-        "name": "RiemaLabs",
-        "url": "https://github.com/RiemaLabs"
+        "name": "berabuddies",
+        "url": "https://github.com/berabuddies"
       }
     }
   ]

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Python source parser built on top of stdlib ``ast``.
 
 Top-level imports are grouped into one ``py_import_block`` unit. Each

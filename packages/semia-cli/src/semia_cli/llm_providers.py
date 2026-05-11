@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Transport-layer IO for Semia synthesis.
 
 Four providers are supported. The HTTP pair talks raw HTTP (no third-party

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Argparse entry point for the Semia CLI MVP."""
 
 from __future__ import annotations

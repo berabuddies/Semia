@@ -1,7 +1,7 @@
 # Trademark Policy
 
-The names **"Semia"** and **"RiemaLabs"**, and any associated logos
-(the "Marks") are trademarks of RiemaLabs.
+The names **"Semia"** and **"berabuddies"**, and any associated logos
+(the "Marks") are trademarks of berabuddies.
 
 The [Apache License 2.0](LICENSE) grants you broad rights to use, modify, and
 distribute the source code of Semia. It explicitly **does not**
@@ -26,13 +26,13 @@ before proceeding.
 
 ## What requires prior written permission
 
-You may not, without prior written permission from RiemaLabs:
+You may not, without prior written permission from berabuddies:
 
 - Use **"Semia"** in the name of a fork, redistribution, hosted
   service, paid product, derivative work, or company.
 - Use the Marks (or names confusingly similar to the Marks) on websites,
   documentation, packaging, or marketing material in a way that suggests
-  endorsement, sponsorship, or official affiliation with RiemaLabs.
+  endorsement, sponsorship, or official affiliation with berabuddies.
 - Register or attempt to register confusingly similar trademarks, domain
   names, or social-media handles.
 - Modify the Marks (e.g., recolor, restyle, combine with other marks) and
@@ -46,9 +46,9 @@ If you fork Semia and distribute changes, please:
 
 1. Choose a clearly different project name. Do not call your fork
    "Semia", "Semia <something>", or any name a reasonable user could
-   mistake for an official RiemaLabs release.
+   mistake for an official berabuddies release.
 2. Include a clear statement that your fork is **not affiliated with**
-   RiemaLabs and is not endorsed by RiemaLabs.
+   berabuddies and is not endorsed by berabuddies.
 3. Preserve the original `LICENSE`, `NOTICE`, and copyright headers in
    the source files you redistribute.
 

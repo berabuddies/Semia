@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 RiemaLabs
+# Copyright 2026 berabuddies
 """Structural checker for SDL core facts and evidence sidecars."""
 
 from __future__ import annotations
