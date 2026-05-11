@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Deterministic skill source loading and semantic unit extraction."""
 
 from __future__ import annotations
@@ -8,11 +10,13 @@ import os
 import re
 from pathlib import Path
 
-from .artifacts import FileInventoryEntry, SemanticUnit, SkillSource, SourceMapEntry, Stage1Bundle
+from .artifacts import FileInventoryEntry, PrepareBundle, SemanticUnit, SkillSource, SourceMapEntry
 
 _FRONT_MATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
-_INLINED_HEADING = "## [Inlined Source Files]"
+_INLINED_HEADING = "<!-- semia:inlined-source-start -->"
+_OLD_INLINED_HEADING = "## [Inlined Source Files]"
 _GENERATED_SOURCE = "<generated>"
+_MAX_FILE_SIZE_BYTES = 1_000_000
 _TEXT_EXTENSIONS = {
     ".bash",
     ".c",
@@ -43,14 +47,22 @@ _TEXT_EXTENSIONS = {
     ".yaml",
     ".yml",
 }
-_SKIP_DIRS = {
+_SKIP_DIRS_ALWAYS = {
     ".git",
     ".hg",
     ".svn",
     ".venv",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".semia",
     "__pycache__",
+    "build",
+    "dist",
     "node_modules",
 }
+_SKIP_FILES_ALWAYS = frozenset({".DS_Store", ".gitkeep"})
 _EXT_TO_LANGUAGE = {
     ".bash": "shell",
     ".c": "c",
@@ -90,12 +102,12 @@ class _AttributedLine:
     source_line: int
 
 
-def build_stage1_bundle(path: str | Path, *, source_id: str | None = None) -> Stage1Bundle:
+def build_prepare_bundle(path: str | Path, *, source_id: str | None = None) -> PrepareBundle:
     """Load a skill file/directory and return prepared evidence artifacts."""
 
     source = load_skill_source(path, source_id=source_id)
     units = extract_semantic_units(source.inlined_text, source_file=_main_source_file(source))
-    return Stage1Bundle(source=source, semantic_units=tuple(units))
+    return PrepareBundle(source=source, semantic_units=tuple(units))
 
 
 def load_skill_source(path: str | Path, *, source_id: str | None = None) -> SkillSource:
@@ -107,12 +119,11 @@ def load_skill_source(path: str | Path, *, source_id: str | None = None) -> Skil
         file_inventory = tuple(_build_file_inventory(root, main_path))
         inlined, source_map = _inline_directory(root, main_path, file_inventory)
         files = tuple(entry.path for entry in file_inventory if entry.disposition != "excluded")
-        digest = _hash_files(root, files)
+        digest = _hash_inventory(root, file_inventory)
         sid = source_id or root.name
     else:
         raw_text = _read_text(root)
         inlined, source_map = _render_enriched(_text_lines(root.name, raw_text))
-        digest = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
         sid = source_id or root.stem
         files = (root.name,)
         file_inventory = (
@@ -124,6 +135,7 @@ def load_skill_source(path: str | Path, *, source_id: str | None = None) -> Skil
                 disposition="inlined",
             ),
         )
+        digest = _hash_inventory(root.parent, file_inventory)
         main_path = root
 
     return SkillSource(
@@ -248,11 +260,12 @@ def _build_file_inventory(root: Path, main_path: Path) -> list[FileInventoryEntr
     entries: list[FileInventoryEntry] = []
     for rel in _iter_visible_files(root):
         path = root / rel
-        if not _is_supported_text_file(path):
+        size_bytes = path.stat().st_size
+        if not _is_supported_text_file(path) or size_bytes > _MAX_FILE_SIZE_BYTES:
             entries.append(
                 FileInventoryEntry(
                     path=rel,
-                    size_bytes=path.stat().st_size,
+                    size_bytes=size_bytes,
                     line_count=0,
                     language=_detect_language(path),
                     disposition="excluded",
@@ -264,7 +277,7 @@ def _build_file_inventory(root: Path, main_path: Path) -> list[FileInventoryEntr
         entries.append(
             FileInventoryEntry(
                 path=rel,
-                size_bytes=path.stat().st_size,
+                size_bytes=size_bytes,
                 line_count=_line_count(text),
                 language=_detect_language(path),
                 disposition="inlined" if rel == rel_main else "inlined_source",
@@ -277,12 +290,10 @@ def _iter_visible_files(root: Path) -> list[str]:
     paths: list[str] = []
     for current_dir, dir_names, file_names in os.walk(root):
         dir_names[:] = sorted(
-            name
-            for name in dir_names
-            if name not in _SKIP_DIRS and not name.startswith(".")
+            name for name in dir_names if name not in _SKIP_DIRS_ALWAYS
         )
         for name in sorted(file_names):
-            if name.startswith("."):
+            if name in _SKIP_FILES_ALWAYS:
                 continue
             rel = Path(current_dir, name).relative_to(root).as_posix()
             paths.append(rel)
@@ -329,6 +340,11 @@ def _render_enriched(
     if not attributed:
         return "\n", ()
 
+    # Merge attributed lines into SourceMapEntry runs:
+    # (a) consecutive lines with the same source_file and consecutive source_line
+    #     numbers form one entry;
+    # (b) source_line == 0 marks "<generated>" content that joins only with adjacent
+    #     generated lines from the same source_file, never with real-source lines.
     source_map: list[SourceMapEntry] = []
     start = 0
     while start < len(attributed):
@@ -380,12 +396,17 @@ def _relative_path(root: Path, path: Path) -> str:
         return path.name
 
 
-def _hash_files(root: Path, files: tuple[str, ...] | list[str]) -> str:
+def _hash_inventory(root: Path, inventory: tuple[FileInventoryEntry, ...]) -> str:
     hasher = hashlib.sha256()
-    for rel in sorted(files):
-        hasher.update(rel.encode("utf-8"))
+    for entry in sorted(inventory, key=lambda e: e.path):
+        hasher.update(entry.path.encode("utf-8"))
         hasher.update(b"\0")
-        hasher.update((root / rel).read_bytes())
+        hasher.update(entry.disposition.encode("utf-8"))
+        hasher.update(b"\0")
+        if entry.disposition == "excluded":
+            hasher.update(str(entry.size_bytes).encode("utf-8"))
+        else:
+            hasher.update((root / entry.path).read_bytes())
         hasher.update(b"\0")
     return hasher.hexdigest()
 
@@ -408,10 +429,12 @@ def _detect_language(path: Path) -> str:
 
 
 def _truncate_before_inlined(source: str) -> str:
-    idx = source.find(_INLINED_HEADING)
-    if idx >= 0:
-        return source[:idx].rstrip() + "\n"
-    return source
+    candidates = [source.find(_INLINED_HEADING), source.find(_OLD_INLINED_HEADING)]
+    candidates = [idx for idx in candidates if idx >= 0]
+    if not candidates:
+        return source
+    idx = min(candidates)
+    return source[:idx].rstrip() + "\n"
 
 
 def _strip_front_matter(source: str) -> str:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Stable public facade for Semia LLM synthesis."""
 
 from __future__ import annotations

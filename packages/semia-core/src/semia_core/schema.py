@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """SDL schema constants used by parser, checker, and rules tooling."""
 
 from __future__ import annotations
@@ -125,5 +127,13 @@ ALLOWED_CALL_CODES: frozenset[str] = frozenset(
         "script",
         "shell",
         "unresolved_target",
+    }
+)
+
+MECHANICAL_FACT_RELATIONS: frozenset[str] = frozenset(
+    {
+        "call_unconditional",
+        "call_conditional",
+        "value",
     }
 )

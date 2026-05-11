@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Argparse entry point for the Semia CLI MVP."""
 
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 import shutil
 import sys
@@ -15,6 +18,13 @@ from .core_adapter import CoreApiError
 from .llm_adapter import LlmSynthesisError
 
 SYNTHESIZED_FACTS = "synthesized_facts.dl"
+
+
+def _get_version() -> str:
+    try:
+        return importlib.metadata.version("semia-skillscan")
+    except importlib.metadata.PackageNotFoundError:
+        return "0.1.0+unknown"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="semia",
         description="Semia Skill Behavior Mapping audit CLI.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {_get_version()}",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -113,16 +128,22 @@ def _prepare(args: argparse.Namespace, stdout: TextIO) -> None:
 
 def _synthesize(args: argparse.Namespace, stdout: TextIO) -> None:
     run_dir = _existing_path(args.run_dir, "run_dir")
-    facts_path = args.facts_path.resolve() if args.facts_path else None
-    if facts_path is not None and not facts_path.exists():
-        raise FileNotFoundError(f"facts file does not exist: {facts_path}")
-    if facts_path is None and (run_dir / SYNTHESIZED_FACTS).exists():
-        facts_path = run_dir / SYNTHESIZED_FACTS
-    elif facts_path is None:
-        result = llm_adapter.synthesize_facts(run_dir, provider=args.provider, model=args.model, validator=core_adapter.check)
+    target = run_dir / SYNTHESIZED_FACTS
+    if args.facts_path is not None:
+        facts_path = _existing_path(args.facts_path, "facts_path")
+        if facts_path != target:
+            shutil.copyfile(facts_path, target)
+        validation_path = target
+    else:
+        result = llm_adapter.synthesize_facts(
+            run_dir,
+            provider=args.provider,
+            model=args.model,
+            validator=core_adapter.check,
+        )
         _print_result(stdout, result, fallback=f"Synthesized behavior map for {run_dir}")
-        facts_path = run_dir / SYNTHESIZED_FACTS
-    result = core_adapter.check(run_dir, facts_path)
+        validation_path = target
+    result = core_adapter.check(run_dir, validation_path)
     _print_result(stdout, result, fallback=f"Synthesized behavior map for {run_dir}")
 
 

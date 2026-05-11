@@ -1,0 +1,97 @@
+name: Release
+
+# Release workflow.
+#
+# - Tag `v*` push : runs validation, builds artifacts, publishes to PyPI.
+# - workflow_dispatch : runs validation + build only (no publish). Useful as a
+#   pre-flight check before tagging.
+#
+# Prerequisites for the publish step (configure once per repository):
+#
+# 1. PyPI side:
+#    - Project page → Publishing → Add a new pending publisher with
+#      Owner: RiemaLabs, Repository: semia-skillscan,
+#      Workflow filename: release.yml, Environment: pypi.
+#
+# 2. GitHub side:
+#    - Settings → Environments → New environment "pypi". Optionally restrict
+#      deployments to tags matching `v*` and require a reviewer.
+#
+# OIDC (id-token: write) replaces long-lived API tokens — no PyPI secret to
+# rotate.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-check:
+    name: Validate and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install build tooling
+        run: uv pip install --system build twine
+
+      - name: Run release check
+        run: make release-check
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+          if-no-files-found: error
+
+      - name: Upload release-check artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semia-skillscan-build-check
+          path: dist/build-check.json
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: release-check
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/semia-skillscan
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

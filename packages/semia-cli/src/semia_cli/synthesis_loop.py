@@ -1,9 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Candidate loop for Semia behavior-map synthesis."""
 
 from __future__ import annotations
 
 import json
 import os
+import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -45,7 +49,20 @@ def synthesize_facts(
     best_validation: dict[str, Any] | None = None
     if best_facts is not None:
         resume_path = root / SYNTHESIZED_FACTS
-        resume_path.write_text(best_facts.rstrip() + "\n", encoding="utf-8")
+        resume_content = best_facts.rstrip() + "\n"
+        # Preserve any newer in-place candidate before the resume overwrites it.
+        if resume_path.exists():
+            existing = resume_path.read_text(encoding="utf-8")
+            if existing != resume_content:
+                backup_path = resume_path.with_suffix(
+                    resume_path.suffix + f".bak.{time.strftime('%Y%m%d-%H%M%S')}"
+                )
+                backup_path.write_text(existing, encoding="utf-8")
+                print(
+                    f"semia: resume backed up existing {resume_path.name} to {backup_path.name}",
+                    file=sys.stderr,
+                )
+        _atomic_write(resume_path, resume_content)
         valid, best_score, best_validation, _ = _validate_candidate(root, resume_path, validator)
         if not valid:
             raise LlmSynthesisError("resume candidate is not valid")
@@ -72,7 +89,7 @@ def synthesize_facts(
                 retry_feedback=retry_feedback,
             )
             response = call_provider(root, prompt, config, settings)
-            (root / f"synthesis_response_{iteration}_{attempt}.txt").write_text(response, encoding="utf-8")
+            _atomic_write(root / f"synthesis_response_{iteration}_{attempt}.txt", response)
             facts = extract_facts(response)
             if not facts.strip():
                 retry_feedback = "The provider returned no Datalog facts."
@@ -80,14 +97,14 @@ def synthesize_facts(
             candidate, candidate_mode = _candidate_from_response(facts, best_facts)
 
             if candidate_mode == "incremental_patch":
-                (root / f"synthesis_patch_{iteration}_{attempt}.dl").write_text(
+                _atomic_write(
+                    root / f"synthesis_patch_{iteration}_{attempt}.dl",
                     facts.rstrip() + "\n",
-                    encoding="utf-8",
                 )
             attempt_path = root / f"synthesis_attempt_{iteration}_{attempt}.dl"
-            attempt_path.write_text(candidate.rstrip() + "\n", encoding="utf-8")
+            _atomic_write(attempt_path, candidate.rstrip() + "\n")
             final_path = root / SYNTHESIZED_FACTS
-            final_path.write_text(candidate.rstrip() + "\n", encoding="utf-8")
+            _atomic_write(final_path, candidate.rstrip() + "\n")
 
             valid, score, validation, diagnostics = _validate_candidate(root, final_path, validator)
             last_validation = validation
@@ -108,7 +125,10 @@ def synthesize_facts(
                 candidate_mode=candidate_mode,
             )
             iterations.append(record)
-            (root / f"synthesized_facts_{iteration}.dl").write_text(candidate.rstrip() + "\n", encoding="utf-8")
+            _atomic_write(
+                root / f"synthesized_facts_{iteration}.dl",
+                candidate.rstrip() + "\n",
+            )
 
             if accepted:
                 improvement = score - prev_accepted_score if prev_accepted_score is not None else score
@@ -129,6 +149,7 @@ def synthesize_facts(
                 elif plateau_counter >= settings.plateau_patience:
                     stop_reason = "plateau"
 
+            iterations = _dedupe_iterations(iterations)
             _write_synthesis_metadata(
                 root,
                 config=config,
@@ -154,6 +175,7 @@ def synthesize_facts(
                     candidate_mode="invalid",
                 )
             )
+            iterations = _dedupe_iterations(iterations)
             _write_synthesis_metadata(
                 root,
                 config=config,
@@ -174,9 +196,10 @@ def synthesize_facts(
         )
 
     final_path = root / SYNTHESIZED_FACTS
-    final_path.write_text(best_facts.rstrip() + "\n", encoding="utf-8")
+    _atomic_write(final_path, best_facts.rstrip() + "\n")
     if stop_reason not in {"ceiling", "plateau"}:
         stop_reason = "exhausted"
+    iterations = _dedupe_iterations(iterations)
     _write_synthesis_metadata(
         root,
         config=config,
@@ -238,7 +261,7 @@ def _validate_candidate(root: Path, facts_path: Path, validator: Validator | Non
         return True, 1.0, {"program_valid": True}, ""
     try:
         payload = validator(root, facts_path)
-    except Exception as exc:
+    except (TypeError, ValueError, OSError, KeyError, json.JSONDecodeError) as exc:
         diagnostics = f"{type(exc).__name__}: {exc}"
         return False, 0.0, {"program_valid": False, "exception": diagnostics}, diagnostics
 
@@ -262,7 +285,9 @@ def _score_payload(payload: dict[str, Any]) -> float:
     match_rate = float(payload.get("evidence_match_rate", 0.0))
     support = float(payload.get("evidence_support_coverage", 0.0))
     reference = float(payload.get("reference_unit_coverage", 0.0))
-    return match_rate * support * reference
+    weights = (0.5, 0.3, 0.2)
+    values = (match_rate, support, reference)
+    return sum(w * v for w, v in zip(weights, values))
 
 
 def _diagnostics(payload: dict[str, Any]) -> str:
@@ -350,7 +375,24 @@ def _write_synthesis_metadata(
         "completed": completed,
         "stop_reason": stop_reason,
     }
-    (root / SYNTHESIS_METADATA).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _atomic_write(root / SYNTHESIS_METADATA, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(content, encoding="utf-8")
+    os.replace(tmp_path, path)
+
+
+def _dedupe_iterations(iterations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Resume re-loads prior iteration records; dedupe by (iteration, attempts, parent)
+    # so successive resumes don't accumulate triplicates. Latest record wins.
+    seen: dict[tuple[Any, Any, Any], int] = {}
+    for idx, record in enumerate(iterations):
+        key = (record.get("iteration"), record.get("attempts"), record.get("parent"))
+        seen[key] = idx
+    keep = sorted(seen.values())
+    return [iterations[i] for i in keep]
 
 
 def _prompt(

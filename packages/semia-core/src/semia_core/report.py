@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Markdown report rendering helpers."""
 
 from __future__ import annotations
@@ -13,6 +15,8 @@ def render_markdown_report(report: AuditReport) -> str:
         lines.extend(_render_check_section(report.check_result.issues, report.check_result.evidence_support_coverage))
     if report.evidence_result is not None:
         lines.extend(_render_evidence_section(report.evidence_result))
+    if report.diagnostics:
+        lines.extend(_render_diagnostics_section(report.diagnostics))
     if report.detector_result is not None:
         lines.extend(_render_detector_section(report.detector_result))
     if report.notes:
@@ -53,6 +57,15 @@ def _render_evidence_section(result: EvidenceAlignmentResult) -> list[str]:
         for alignment in unmatched[:10]:
             lines.append(f"- line {alignment.fact.line}: {alignment.evidence_text!r} ({alignment.score:.2f})")
         lines.append("")
+    return lines
+
+
+def _render_diagnostics_section(diagnostics: dict[str, float]) -> list[str]:
+    lines = ["## Quality Diagnostics", ""]
+    ssa = diagnostics.get("ssa_input_availability")
+    if ssa is not None:
+        lines.append(f"- SSA input availability: {ssa:.2%}")
+    lines.append("")
     return lines
 
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Incremental patch support for behavior-map synthesis."""
 
 from __future__ import annotations
@@ -6,7 +8,7 @@ import re
 
 _REPLACE_RE = re.compile(r"^//\s*REPLACE:\s*(.+)$")
 _REMOVE_RE = re.compile(r"^//\s*REMOVE:\s*(.+)$")
-_FACT_LIKE_RE = re.compile(r'^[a-zA-Z_]\w*\s*\(.*\)\s*\.\s*$')
+_RELATION_RE = re.compile(r'^[A-Za-z_]\w*\s*\(')
 
 
 def parse_incremental_diff(source: str) -> dict[str, object] | None:
@@ -111,4 +113,34 @@ def _is_legal_dl_line(line: str) -> bool:
 
 def _looks_like_fact(line: str) -> bool:
     stripped = line.strip()
-    return bool(_FACT_LIKE_RE.match(stripped)) and stripped.count('"') % 2 == 0
+    if not stripped.endswith("."):
+        return False
+    if not _RELATION_RE.match(stripped):
+        return False
+    body = stripped[:-1].rstrip()
+    if not body.endswith(")"):
+        return False
+    open_idx = body.find("(")
+    inner = body[open_idx + 1 : -1]
+    paren_depth = 0
+    in_quote = False
+    escaped = False
+    for ch in inner:
+        if escaped:
+            escaped = False
+            continue
+        if ch == "\\" and in_quote:
+            escaped = True
+            continue
+        if ch == '"':
+            in_quote = not in_quote
+            continue
+        if in_quote:
+            continue
+        if ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth -= 1
+            if paren_depth < 0:
+                return False
+    return paren_depth == 0 and not in_quote

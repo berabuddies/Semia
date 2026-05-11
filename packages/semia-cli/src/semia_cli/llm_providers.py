@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Provider IO for Semia synthesis.
 
 The provider layer owns network/subprocess details. It deliberately avoids any
@@ -22,11 +24,13 @@ from .llm_config import (
     LlmSynthesisError,
     SynthesisConfig,
     SynthesisSettings,
+    load_dotenv,
     timeout_seconds,
 )
 
 
 def call_provider(root: Path, prompt: str, config: SynthesisConfig, settings: SynthesisSettings) -> str:
+    load_dotenv()
     if config.provider == "openai":
         return _run_with_retries(
             lambda: _run_openai(prompt, config.model or DEFAULT_OPENAI_MODEL),
@@ -80,10 +84,13 @@ def _run_with_retries(call: Callable[[], str], max_retries: int) -> str:
 
 
 def _run_openai(prompt: str, model: str) -> str:
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = _first_env("SEMIA_OPENAI_API_KEY", "SEMIA_AUDIT_OPENAI_API_KEY", "OPENAI_API_KEY")
     if not api_key:
         raise LlmSynthesisError("openai provider selected, but OPENAI_API_KEY is not set")
-    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    base_url = (
+        _first_env("SEMIA_OPENAI_BASE_URL", "SEMIA_AUDIT_OPENAI_ENDPOINT", "OPENAI_BASE_URL")
+        or "https://api.openai.com/v1"
+    ).rstrip("/")
     payload = {
         "model": model,
         "input": prompt,
@@ -191,30 +198,18 @@ def _run_anthropic(prompt: str, model: str | None) -> str:
         import anthropic  # type: ignore[import-not-found]
     except ImportError as exc:
         raise LlmSynthesisError(
-            "anthropic provider selected, but the `anthropic` Python SDK is not installed"
+            "anthropic provider selected, but the `anthropic` Python SDK is not installed; "
+            'install it with `python -m pip install -e ".[anthropic]"`'
         ) from exc
 
     resolved_model = model or _anthropic_default_model()
     if not resolved_model:
         raise LlmSynthesisError(
             "anthropic provider selected, but no model is configured; set --model, "
-            "SEMIA_LLM_MODEL, ANTHROPIC_MODEL, or ANTHROPIC_DEFAULT_SONNET_MODEL"
+            "SEMIA_LLM_MODEL, ANTHROPIC_MODEL, or ANTHROPIC_DEFAULT_OPUS_MODEL"
         )
 
-    kwargs: dict[str, Any] = {}
-    base_url = _first_env("SEMIA_ANTHROPIC_BASE_URL", "ANTHROPIC_BASE_URL")
-    if base_url:
-        kwargs["base_url"] = base_url
-    api_key = _first_env("SEMIA_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
-    auth_token = _first_env("SEMIA_ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN")
-    if api_key:
-        kwargs["api_key"] = api_key
-    elif auth_token:
-        kwargs["auth_token"] = auth_token
-    kwargs["timeout"] = timeout_seconds()
-    kwargs["max_retries"] = _env_int("SEMIA_LLM_MAX_RETRIES", 2)
-
-    client = anthropic.Anthropic(**kwargs)
+    client = anthropic.Anthropic(**_anthropic_client_kwargs())
     request_payload: dict[str, Any] = {
         "model": resolved_model,
         "max_tokens": _env_int("SEMIA_ANTHROPIC_MAX_TOKENS", 16384),
@@ -231,6 +226,28 @@ def _run_anthropic(prompt: str, model: str | None) -> str:
         return _read_anthropic_stream(stream)
     except Exception as exc:
         raise LlmSynthesisError(f"Anthropic Messages API failed: {exc}") from exc
+
+
+def _anthropic_client_kwargs() -> dict[str, Any]:
+    kwargs: dict[str, Any] = {}
+    base_url = _first_env("SEMIA_ANTHROPIC_BASE_URL", "SEMIA_AUDIT_ANTHROPIC_ENDPOINT", "ANTHROPIC_BASE_URL")
+    if base_url:
+        kwargs["base_url"] = base_url
+    api_key = _first_env("SEMIA_ANTHROPIC_API_KEY", "SEMIA_AUDIT_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY")
+    auth_token = _first_env(
+        "SEMIA_ANTHROPIC_AUTH_TOKEN",
+        "SEMIA_AUDIT_ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_AUTH_TOKEN",
+    )
+    if api_key:
+        kwargs["api_key"] = api_key
+    elif auth_token:
+        kwargs["auth_token"] = auth_token
+    else:
+        raise LlmSynthesisError("anthropic provider selected, but ANTHROPIC_API_KEY is not set")
+    kwargs["timeout"] = timeout_seconds()
+    kwargs["max_retries"] = _env_int("SEMIA_LLM_MAX_RETRIES", 2)
+    return kwargs
 
 
 def _read_anthropic_stream(stream: Any) -> str:
@@ -277,12 +294,19 @@ def _get_attr(value: Any, name: str) -> Any:
 
 def _anthropic_default_model() -> str | None:
     return (
-        _first_env("SEMIA_ANTHROPIC_MODEL", "ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL")
+        _first_env(
+            "SEMIA_ANTHROPIC_MODEL",
+            "SEMIA_AUDIT_ANTHROPIC_MODEL",
+            "ANTHROPIC_MODEL",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        )
         or None
     )
 
 
 def _first_env(*names: str) -> str | None:
+    load_dotenv()
     for name in names:
         value = os.environ.get(name)
         if value:
@@ -334,20 +358,54 @@ def _run_claude(root: Path, prompt: str, model: str | None) -> str:
     ]
     if model:
         cmd.extend(["--model", model])
-    cmd.append(prompt)
-    return _run_subprocess(cmd, None, cwd=root).stdout
+    # Pass the prompt via stdin: --tools is variadic and would otherwise
+    # consume a trailing positional prompt argument.
+    result = _run_subprocess(cmd, prompt, cwd=root, env=_provider_env())
+    if not result.stdout.strip():
+        detail = result.stderr.strip() or "Claude Code returned an empty synthesis response"
+        raise LlmSynthesisError(detail)
+    return result.stdout
 
 
-def _run_subprocess(cmd: list[str], stdin: str | None, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _provider_env() -> dict[str, str]:
+    env = os.environ.copy()
+    aliases = {
+        "ANTHROPIC_API_KEY": ("SEMIA_ANTHROPIC_API_KEY", "SEMIA_AUDIT_ANTHROPIC_API_KEY"),
+        "ANTHROPIC_AUTH_TOKEN": ("SEMIA_ANTHROPIC_AUTH_TOKEN", "SEMIA_AUDIT_ANTHROPIC_AUTH_TOKEN"),
+        "ANTHROPIC_BASE_URL": ("SEMIA_ANTHROPIC_BASE_URL", "SEMIA_AUDIT_ANTHROPIC_ENDPOINT"),
+        "ANTHROPIC_MODEL": ("SEMIA_ANTHROPIC_MODEL", "SEMIA_AUDIT_ANTHROPIC_MODEL", "SEMIA_LLM_MODEL"),
+        "OPENAI_API_KEY": ("SEMIA_OPENAI_API_KEY", "SEMIA_AUDIT_OPENAI_API_KEY"),
+        "OPENAI_BASE_URL": ("SEMIA_OPENAI_BASE_URL", "SEMIA_AUDIT_OPENAI_ENDPOINT"),
+    }
+    for target, source_names in aliases.items():
+        if env.get(target):
+            continue
+        for source_name in source_names:
+            if env.get(source_name):
+                env[target] = env[source_name]
+                break
+    return env
+
+
+def _run_subprocess(
+    cmd: list[str],
+    stdin: str | None,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     try:
         result = subprocess.run(
             cmd,
             input=stdin,
             cwd=str(cwd) if cwd else None,
+            env=env,
             text=True,
             capture_output=True,
             check=False,
+            timeout=timeout_seconds(),
         )
+    except subprocess.TimeoutExpired as exc:
+        raise LlmSynthesisError(f"provider command timed out after {timeout_seconds()} seconds") from exc
     except OSError as exc:
         raise LlmSynthesisError(str(exc)) from exc
     if result.returncode != 0:

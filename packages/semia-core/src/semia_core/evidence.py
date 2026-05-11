@@ -1,10 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Deterministic evidence-text alignment to prepared semantic units."""
 
 from __future__ import annotations
 
 import re
 
-from .artifacts import EvidenceAlignment, EvidenceAlignmentResult, Fact, SemanticUnit, Stage1Bundle
+from .artifacts import EvidenceAlignment, EvidenceAlignmentResult, Fact, PrepareBundle, SemanticUnit
 from .facts import parse_facts
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
@@ -12,14 +14,14 @@ _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
 
 def align_evidence_text(
     program_or_source,
-    stage1: Stage1Bundle | list[SemanticUnit] | tuple[SemanticUnit, ...],
+    prepared: PrepareBundle | list[SemanticUnit] | tuple[SemanticUnit, ...],
     *,
     threshold: float = 0.2,
 ) -> EvidenceAlignmentResult:
     """Align raw ``*_evidence_text`` rows to the best prepared evidence unit."""
 
     program = parse_facts(program_or_source) if isinstance(program_or_source, str) else program_or_source
-    units = stage1.semantic_units if isinstance(stage1, Stage1Bundle) else tuple(stage1)
+    units = prepared.semantic_units if isinstance(prepared, PrepareBundle) else tuple(prepared)
     alignments: list[EvidenceAlignment] = []
     normalized: list[Fact] = []
     matched_unit_ids: set[int] = set()
@@ -69,14 +71,15 @@ def _score(evidence_text: str, unit_text: str) -> float:
     unit = unit_text.strip().lower()
     if not ev or not unit:
         return 0.0
-    if ev in unit or unit in ev:
-        shorter = min(len(_tokens(ev)), len(_tokens(unit)))
-        longer = max(len(_tokens(ev)), len(_tokens(unit)))
-        return 1.0 if shorter == longer else max(0.75, shorter / max(1, longer))
     ev_tokens = set(_tokens(ev))
     unit_tokens = set(_tokens(unit))
     if not ev_tokens or not unit_tokens:
         return 0.0
+    shorter_chars = min(len(ev), len(unit))
+    if (ev in unit or unit in ev) and shorter_chars >= 8 and min(len(ev_tokens), len(unit_tokens)) >= 2:
+        shorter = min(len(_tokens(ev)), len(_tokens(unit)))
+        longer = max(len(_tokens(ev)), len(_tokens(unit)))
+        return 1.0 if shorter == longer else max(0.75, shorter / max(1, longer))
     return len(ev_tokens & unit_tokens) / len(ev_tokens | unit_tokens)
 
 

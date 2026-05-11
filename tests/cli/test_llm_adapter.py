@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,6 +15,7 @@ CLI_SRC = REPO_ROOT / "packages" / "semia-cli" / "src"
 sys.path.insert(0, str(CLI_SRC))
 
 from semia_cli import llm_adapter  # noqa: E402
+from semia_cli.synthesis_patch import _looks_like_fact  # noqa: E402
 
 
 class LlmAdapterTests(unittest.TestCase):
@@ -100,6 +103,12 @@ class LlmAdapterTests(unittest.TestCase):
 
         self.assertEqual(model, "sonnet")
 
+    def test_claude_default_model_reads_legacy_semia_audit_model(self) -> None:
+        with mock.patch.dict("os.environ", {"SEMIA_AUDIT_ANTHROPIC_MODEL": "opus-4-6"}, clear=True):
+            model = llm_adapter.default_model(provider="claude")
+
+        self.assertEqual(model, "opus-4-6")
+
     def test_anthropic_provider_uses_sdk_stream(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
@@ -140,7 +149,11 @@ class LlmAdapterTests(unittest.TestCase):
             ):
                 with mock.patch.dict(
                     "os.environ",
-                    {"ANTHROPIC_API_KEY": "test-key", "ANTHROPIC_MODEL": "claude-test"},
+                    {
+                        "SEMIA_AUDIT_ANTHROPIC_API_KEY": "test-key",
+                        "SEMIA_AUDIT_ANTHROPIC_ENDPOINT": "https://anthropic.example/v1",
+                        "SEMIA_AUDIT_ANTHROPIC_MODEL": "claude-test",
+                    },
                     clear=True,
                 ):
                     result = llm_adapter.synthesize_facts(run_dir, provider="anthropic")
@@ -149,6 +162,7 @@ class LlmAdapterTests(unittest.TestCase):
             self.assertEqual(result["model"], "claude-test")
             self.assertEqual((run_dir / "synthesized_facts.dl").read_text(encoding="utf-8"), 'skill("demo").\n')
             self.assertEqual(requests[0]["client"]["api_key"], "test-key")  # type: ignore[index]
+            self.assertEqual(requests[0]["client"]["base_url"], "https://anthropic.example/v1")  # type: ignore[index]
             self.assertEqual(requests[1]["model"], "claude-test")
             self.assertTrue(requests[1]["stream"])
 
@@ -158,7 +172,7 @@ class LlmAdapterTests(unittest.TestCase):
             (run_dir / "synthesis_prompt.md").write_text("Emit facts.", encoding="utf-8")
             (run_dir / "prepared_skill.md").write_text("# Demo\n", encoding="utf-8")
 
-            def fake_run(cmd, input=None, cwd=None, text=None, capture_output=None, check=None):
+            def fake_run(cmd, input=None, cwd=None, text=None, capture_output=None, check=None, timeout=None, env=None):
                 output_path = Path(cmd[cmd.index("--output-last-message") + 1])
                 output_path.write_text('```datalog\nskill("demo").\n```\n', encoding="utf-8")
                 return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -197,7 +211,7 @@ class LlmAdapterTests(unittest.TestCase):
             (run_dir / "prepared_skill.md").write_text("# Demo\n", encoding="utf-8")
             responses = iter(["not a fact\n", 'skill("demo").\n'])
 
-            def fake_run(cmd, input=None, cwd=None, text=None, capture_output=None, check=None):
+            def fake_run(cmd, input=None, cwd=None, text=None, capture_output=None, check=None, timeout=None, env=None):
                 output_path = Path(cmd[cmd.index("--output-last-message") + 1])
                 output_path.write_text(next(responses), encoding="utf-8")
                 return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -225,7 +239,8 @@ class LlmAdapterTests(unittest.TestCase):
                         result = llm_adapter.synthesize_facts(run_dir, provider="codex", validator=validator)
 
             self.assertEqual(result["selected_iteration"], 0)
-            self.assertEqual(result["score"], 0.5)
+            # weighted arithmetic mean: 0.5*1.0 + 0.3*1.0 + 0.2*0.5 = 0.9
+            self.assertAlmostEqual(result["score"], 0.9)
             self.assertTrue((run_dir / "synthesis_response_0_0.txt").exists())
             self.assertTrue((run_dir / "synthesis_response_0_1.txt").exists())
             self.assertTrue((run_dir / "synthesized_facts_0.dl").exists())
@@ -246,7 +261,7 @@ class LlmAdapterTests(unittest.TestCase):
                 ]
             )
 
-            def fake_run(cmd, input=None, cwd=None, text=None, capture_output=None, check=None):
+            def fake_run(cmd, input=None, cwd=None, text=None, capture_output=None, check=None, timeout=None, env=None):
                 output_path = Path(cmd[cmd.index("--output-last-message") + 1])
                 output_path.write_text(next(responses), encoding="utf-8")
                 return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -283,6 +298,28 @@ def json_body(data: bytes) -> dict[str, object]:
     import json
 
     return json.loads(data.decode("utf-8"))
+
+
+class LooksLikeFactTests(unittest.TestCase):
+    def test_rejects_two_top_level_facts_joined_by_comma(self) -> None:
+        self.assertFalse(_looks_like_fact("foo(a), bar(b)."))
+
+    def test_accepts_fact_with_escaped_quote_in_argument(self) -> None:
+        self.assertTrue(_looks_like_fact('pred("a\\"b").'))
+
+    def test_rejects_fact_with_unbalanced_paren_in_string(self) -> None:
+        # An unterminated string literal leaves the walker in_quote at end,
+        # so the line is rejected as a structurally invalid fact.
+        self.assertFalse(_looks_like_fact('pred("(unbalanced).'))
+
+    def test_accepts_simple_fact(self) -> None:
+        self.assertTrue(_looks_like_fact('skill("demo").'))
+
+    def test_rejects_fact_with_trailing_close_paren_outside_string(self) -> None:
+        self.assertFalse(_looks_like_fact('foo("bad)").extra'))
+
+    def test_accepts_nested_parens(self) -> None:
+        self.assertTrue(_looks_like_fact("foo(bar(a), baz(b))."))
 
 
 if __name__ == "__main__":

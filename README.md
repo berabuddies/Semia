@@ -1,169 +1,293 @@
 # Semia Skillscan
 
-Semia Skillscan builds a behavior map for AI agent skills. It turns
-natural-language skill instructions and adjacent source into grounded facts
-about what the skill may do, then runs deterministic checks over those facts.
-It is maintained by RiemaLabs and follows the license used by the Semia paper:
-[arXiv:2605.00314](https://arxiv.org/abs/2605.00314).
+> **Static security audit for AI agent skills.** Know what a skill *can* do
+> before you trust it.
 
-The product shape is:
+[![CI](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/ci.yml/badge.svg)](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/ci.yml)
+[![Lint](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/lint.yml/badge.svg)](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/lint.yml)
+[![Gitleaks](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/gitleaks.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-```text
-semia scan ./some-skill
-Run Semia audit on this skill
-```
+Agent skills are markdown files with embedded shell commands, network calls,
+and tool invocations. They run with **your credentials, on your machine,
+with your data**. Skillscan reads a skill as data — never executes it — and
+produces an evidence-backed report of every capability it may exercise.
 
-The scanner is designed around a narrow trust boundary. Host agents such as
-Codex, Claude Code, and OpenClaw can use their own session to synthesize the
-behavior map, while Semia provides deterministic preparation, fact checking,
-evidence grounding, Souffle-backed detection, and reporting.
-The standalone CLI defaults to OpenAI for synthesis with `gpt-5.5`, using
-`OPENAI_API_KEY`. Users can override the provider or model with flags or
-environment variables.
+It is the difference between
 
-## Quick start
+> *"I trust this skill because the README looks fine."*
 
-In an installed plugin host, ask:
+and
 
-```text
-Run Semia audit on this skill
-```
+> *"I trust this skill because Skillscan extracted 14 actions, 6 effects,
+> and 2 secret reads — and every one is grounded in a specific source line."*
 
-From a shell, run a full local audit:
+---
+
+## Quick example
+
+In your shell:
 
 ```bash
+git clone https://github.com/RiemaLabs/semia-skillscan
+cd semia-skillscan && pip install -e .
 semia scan ./some-skill --out .semia/runs/some-skill
 ```
 
-By default, this runs `prepare`, calls the configured LLM provider for
-`synthesize`, then runs `detect` and `report`. The default provider is `openai`
-and the default model is `gpt-5.5`. Use `--provider anthropic` for direct
-Anthropic SDK calls, `--provider codex` or `--provider claude` to route
-synthesis through a local agent CLI, or `--model` to pass an explicit model
-name to the selected provider.
+Or inside Codex, Claude Code, or OpenClaw, just ask:
 
-Configuration knobs:
+> Run Semia audit on this skill
 
-```bash
-export OPENAI_API_KEY=...
-export SEMIA_LLM_PROVIDER=openai
-export SEMIA_LLM_MODEL=gpt-5.5
-semia scan ./some-skill --out .semia/runs/some-skill
+You get a Markdown report and a [SARIF 2.1.0](https://sarifweb.azurewebsites.net/)
+file: findings ranked by severity, every finding tied to specific source
+lines, and a Datalog program you can re-query.
+
+## What you get
+
+A run writes the following under `.semia/runs/<run-id>/`:
+
+| Artifact                  | Purpose                                            |
+| ------------------------- | -------------------------------------------------- |
+| `report.md`               | human-readable findings with evidence              |
+| `report.sarif.json`       | SARIF 2.1.0 — drop into GitHub Code Scanning       |
+| `synthesized_facts.dl`    | the behavior map (Datalog facts)                   |
+| `detection_findings.dl`   | findings derived by rule evaluation                |
+| `prepared_skill.md`       | normalized skill text with stable line anchors     |
+| `prepare_units.json`      | reference units the evidence text aligns against   |
+| `synthesis_metadata.json` | provider, model, retries, score, stop reason       |
+| `run_manifest.json`       | end-to-end manifest of the run                     |
+
+Because every finding traces back to a source line, the SARIF drops cleanly
+into GitHub Code Scanning and reviewers see annotations directly on the
+skill PR.
+
+## How it works
+
+```text
+   ┌──────────┐     ┌────────────┐     ┌──────────┐     ┌────────┐
+   │ Prepare  │ ──▶ │ Synthesize │ ──▶ │  Detect  │ ──▶ │ Report │
+   │  (det.)  │     │   (LLM)    │     │  (det.)  │     │ (det.) │
+   └──────────┘     └────────────┘     └──────────┘     └────────┘
 ```
 
-Provider defaults:
+1. **Prepare** — read skill markdown + adjacent source, inline references,
+   assign stable evidence handles. Pure stdlib. No LLM.
+2. **Synthesize** — an LLM (or the host agent's own session) extracts a
+   *behavior map* as Datalog facts (`action`, `call`, `call_effect`, …)
+   with `_evidence_text` sidecars citing the original source. The loop
+   retries invalid candidates with checker feedback and keeps the best one.
+3. **Detect** — a Datalog evaluator runs the bundled SDL rules over the
+   facts to flag risky combinations (e.g. *secret read → network write*).
+4. **Report** — render Markdown for humans and SARIF for CI.
 
-- `openai`: reads `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`, and streams the
-  Responses API by default.
-- `anthropic`: uses the Python Anthropic SDK when installed. It reads
-  `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, optional
-  `ANTHROPIC_BASE_URL`, and `ANTHROPIC_MODEL`.
-- `claude`: shells out to Claude Code and inherits Claude Code environment such
-  as `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, and
-  `ANTHROPIC_MODEL`.
-- `codex`: shells out to Codex CLI and inherits the user's Codex CLI
-  configuration.
+Detection runs through a built-in pure-Python Datalog evaluator by default,
+so **no external binary is required**. If [Soufflé](https://souffle-lang.github.io/)
+is on `PATH` (or `SEMIA_SOUFFLE_BIN`) it is preferred as a faster backend.
+Override with `SEMIA_DETECTOR_BACKEND=auto|souffle|builtin`.
 
-Shared Semia overrides:
+[Read the full architecture →](docs/architecture.md)
 
-- `SEMIA_LLM_PROVIDER`
-- `SEMIA_LLM_MODEL`
-- `SEMIA_LLM_TIMEOUT`
-- `SEMIA_LLM_MAX_RETRIES`
-- `SEMIA_SYNTHESIS_N_ITERATIONS`
-- `SEMIA_SYNTHESIS_MAX_RETRIES`
-- `SEMIA_SYNTHESIS_PLATEAU_MIN_IMPROVEMENT`
-- `SEMIA_SYNTHESIS_PLATEAU_PATIENCE`
-- `SEMIA_SYNTHESIS_RESUME_FROM`
-- `SEMIA_SYNTHESIS_MAX_DOC_BYTES`
+## Trust model
 
-Synthesize writes production audit artifacts as it runs:
+Skillscan is a security tool for analyzing untrusted content. The trust
+boundary is explicit:
 
-- `synthesized_facts.dl`: selected winning behavior map
-- `synthesized_facts_<n>.dl`: accepted candidate per iteration
-- `synthesis_attempt_<n>_<m>.dl`: raw extracted attempt facts
-- `synthesis_patch_<n>_<m>.dl`: incremental review diff, when used
-- `synthesis_response_<n>_<m>.txt`: raw provider response
-- `synthesis_metadata.json`: provider, model, retry, score, candidate chain,
-  selected iteration, and stop reason
+| Surface                   | Treatment                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| Audited skill             | **untrusted data** — never executed, hooks/installers ignored                    |
+| Skill-declared URLs       | **never fetched** during a scan                                                  |
+| Prompt-injection in skill | **recorded as evidence**, not followed as instructions                           |
+| Prepare / Detect / Report | deterministic, stdlib-friendly, runs locally                                     |
+| Synthesize                | the only LLM-mediated step; output must pass structural and evidence checks      |
+| Network                   | LLM provider only                                                                |
+| Filesystem                | reads the skill directory; writes only `.semia/runs/<run-id>/`                   |
 
-For local development, simulate a fresh user install:
+See [docs/plugin-protocol.md#hostile-input-rules](docs/plugin-protocol.md)
+for the full host-integration contract, and
+[SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+## Install
+
+From source (current):
 
 ```bash
+git clone https://github.com/RiemaLabs/semia-skillscan
+cd semia-skillscan
 python3 -m venv --clear .venv
 source .venv/bin/activate
 python -m pip install -e .
-semia --help
-semia scan ./some-skill --out .semia/runs/some-skill
 ```
 
 For direct Anthropic SDK synthesis, install the optional extra:
 
 ```bash
 python -m pip install -e ".[anthropic]"
-semia scan ./some-skill --out .semia/runs/some-skill --provider anthropic
 ```
 
-If the virtual environment was created by a broken Python runtime, recreate it
-with `python3 -m venv --clear .venv` before installing.
+Python 3.11+ required. The root project has zero runtime dependencies.
 
-If you already have agent-generated synthesized facts, provide them explicitly:
+## Configuration
 
+Settings come from CLI flags, environment variables, or a repo-local
+`.env`. Copy [`.env.example`](.env.example) to `.env` and fill in your
+credentials — `.env` is gitignored, and CI runs `gitleaks` to make sure
+nothing leaks into the history.
+
+### Providers
+
+The default provider is `openai` with model `gpt-5.5`, authenticated via
+`OPENAI_API_KEY`.
+
+| Provider    | How to reach it                       | Auth                                                  |
+| ----------- | ------------------------------------- | ----------------------------------------------------- |
+| `openai`    | streams the Responses API             | `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`          |
+| `anthropic` | Python Anthropic SDK (extra required) | `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`         |
+| `claude`    | shells out to Claude Code             | inherits Claude Code env (`ANTHROPIC_*`)              |
+| `codex`     | shells out to Codex CLI               | inherits Codex CLI config                             |
+
+Switch with a flag:
+
+```bash
+semia scan ./some-skill --out .semia/runs/some-skill --provider anthropic
+semia scan ./some-skill --out .semia/runs/some-skill --provider claude --model claude-sonnet-4-5
+```
+
+### Most common environment variables
+
+| Variable                    | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `SEMIA_LLM_PROVIDER`        | `openai` (default), `anthropic`, `claude`, `codex`            |
+| `SEMIA_LLM_MODEL`           | model name passed to the provider                             |
+| `SEMIA_LLM_TIMEOUT`         | request timeout in seconds                                    |
+| `SEMIA_LLM_MAX_RETRIES`     | retry budget                                                  |
+| `SEMIA_DETECTOR_BACKEND`    | `auto` (default), `souffle`, `builtin`                        |
+| `SEMIA_SOUFFLE_BIN`         | path to `souffle` if not on `PATH`                            |
+
+For full synthesis tuning (`SEMIA_SYNTHESIS_*`), see the rest of
+[`.env.example`](.env.example) and
+[docs/plugin-protocol.md](docs/plugin-protocol.md).
+
+## Common workflows
+
+**Stop after deterministic preparation:**
+```bash
+semia scan ./some-skill --out .semia/runs/some-skill --prepare-only
+```
+
+**Reuse facts from a prior run or an agent session:**
 ```bash
 semia scan ./some-skill --out .semia/runs/some-skill --facts synthesized_facts.dl
 semia report .semia/runs/some-skill --format sarif
 ```
 
-For CI smoke tests or offline demos only, `--offline-baseline` uses a
-conservative non-LLM fallback. It is not a substitute for real synthesis. Use
-`--prepare-only` only when you intentionally want to stop after prepare.
+**CI smoke test (no LLM call):**
+```bash
+semia scan ./some-skill --out .semia/runs/some-skill --offline-baseline
+```
+> `--offline-baseline` is a conservative non-LLM fallback for offline demos
+> and CI smoke tests. It is **not** a substitute for real synthesis.
 
-## Repository shape
+## Install as a host plugin
+
+Each plugin bundle under `packages/semia-plugins/<host>/` ships with a
+self-contained `bin/semia.pyz` zipapp, so the plugin works out of the box
+without a separate `pip install semia-skillscan`. Installing the Python
+package as well is recommended if you want `semia` available as a normal
+shell command alongside the in-host workflow.
+
+**Codex** — add the marketplace and install the plugin:
+
+```bash
+codex marketplace add RiemaLabs/semia-skillscan
+codex plugin install semia-audit
+```
+
+**Claude Code** — add the marketplace from inside Claude Code and install:
+
+```text
+/plugin marketplace add RiemaLabs/semia-skillscan
+/plugin install semia-audit@semia-skillscan
+```
+
+See [Discover and install plugins](https://docs.claude.com/en/docs/claude-code/plugins)
+for the full plugin manager UX.
+
+**OpenClaw** — copy the plugin directory into your OpenClaw plugins root:
+
+```bash
+cp -r packages/semia-plugins/openclaw ~/.openclaw/plugins/semia-audit
+```
+
+## Repository layout
 
 ```text
 packages/
-  semia-core/       # deterministic analysis library
-  semia-cli/        # local and CI command surface
-  semia-plugins/    # Codex, Claude Code, and OpenClaw integrations
+  semia-core/       # deterministic analysis library (prepare, check, detect, report)
+  semia-cli/        # `semia` command surface
+  semia-plugins/    # Codex / Claude Code / OpenClaw integrations
 docs/
+  architecture.md
+  plugin-protocol.md
   release.md
   supply-chain.md
 tests/
-```
 
-This scaffold intentionally keeps runtime dependencies at zero. Package lanes
-can add their own dependencies when they land, but the root quality gates stay
-stdlib-friendly.
+```
 
 ## Development
 
-Install `uv`, then run:
-
 ```bash
-make help
-make check
-make build
-make release-check
+git clone https://github.com/RiemaLabs/semia-skillscan
+cd semia-skillscan
+python3 -m venv --clear .venv
+source .venv/bin/activate
+python -m pip install -e ".[anthropic]"
+python -m pip install pre-commit
+pre-commit install
+pre-commit run --all-files     # establish a clean baseline
+
+make help            # list targets
+make check           # compile + tests + manifest validation
+make build           # package metadata check
+make release-check   # full pre-release gate
 ```
 
-The root checks currently cover:
+The root quality gates stay stdlib-friendly: `compileall`, `unittest`
+discovery, and stdlib-only validators. Pre-commit adds `ruff` lint/format
+and `gitleaks` secret scanning; CI mirrors both via
+[`lint.yml`](.github/workflows/lint.yml) and
+[`gitleaks.yml`](.github/workflows/gitleaks.yml).
 
-- Python byte-compilation via `compileall`
-- stdlib `unittest` discovery
-- integration manifest JSON validation
-- package metadata and package-data checks
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and the DCO
+sign-off requirement.
 
-## Behavior Map Contract
+## Project background
 
-The target skill is untrusted data. A host agent may read skill contents to
-synthesize behavior facts, but deterministic Semia tooling is the acceptance
-boundary: generated facts must pass parsing, schema checks, evidence alignment,
-and detector execution before a report is trusted.
+The technique behind Semia Skillscan is described in the Semia paper
+([Semia paper, in preparation](https://github.com/RiemaLabs/semia-skillscan)). Skillscan is the
+**deterministic acceptance boundary** around behavior mapping: agents may
+extract facts, but only checked, evidence-grounded facts make it into a
+report.
 
-## License
+## Security
 
-Semia Skillscan uses `CC-BY-NC-ND-4.0`, matching the Semia paper
-([arXiv:2605.00314](https://arxiv.org/abs/2605.00314)). This is a
-source-available research/software release, not an OSI open source software
-license. Commercial use and distribution of modified versions require explicit
-permission from RiemaLabs. See [LICENSE](LICENSE).
+To report a security vulnerability, see [SECURITY.md](SECURITY.md). Please
+do **not** file public GitHub issues for security problems.
+
+## Contributing
+
+Contributions are welcome — bug reports, documentation fixes, detector
+rules, and code. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow
+and the DCO sign-off requirement.
+
+## License & trademarks
+
+Semia Skillscan is released under the [Apache License 2.0](LICENSE). You
+may use, modify, and redistribute it freely, including for commercial
+purposes, subject to the terms of the license. See [NOTICE](NOTICE) for
+attribution.
+
+The names **"Semia"**, **"Skillscan"**, **"Semia Skillscan"**, and
+**"RiemaLabs"** are trademarks of RiemaLabs and are **not** licensed under
+Apache-2.0. See [TRADEMARKS.md](TRADEMARKS.md) for the trademark policy.

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "AgentSkills-compatible Semia audit plugin for OpenClaw.",
   "publisher": "RiemaLabs",
-  "license": "CC-BY-NC-ND-4.0",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/RiemaLabs/semia-skillscan",
   "repository": "https://github.com/RiemaLabs/semia-skillscan",
   "categories": [

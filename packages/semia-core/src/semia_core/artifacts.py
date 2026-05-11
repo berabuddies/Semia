@@ -1,10 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Dataclass contracts shared by Semia core steps."""
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
+
+_INT_LIKE_RE = re.compile(r"^-?\d+$")
 
 
 def _plain(value: Any) -> Any:
@@ -79,7 +84,7 @@ class SemanticUnit:
 
 
 @dataclass(frozen=True)
-class Stage1Bundle:
+class PrepareBundle:
     """Prepared artifact contract consumed by agent synthesis workflows."""
 
     source: SkillSource
@@ -133,6 +138,7 @@ class FactProgram:
     evidence_facts: tuple[Fact, ...]
     evidence_unit_facts: tuple[Fact, ...]
     unknown_facts: tuple[Fact, ...]
+    preprocessor_directives: tuple[str, ...] = ()
 
     @property
     def all_facts(self) -> tuple[Fact, ...]:
@@ -148,6 +154,7 @@ class FactProgram:
         lines: list[str] = []
         if include_directives:
             lines.extend(self.includes)
+            lines.extend(self.preprocessor_directives)
         lines.extend(fact.render() for fact in self.core_facts)
         return "\n".join(lines) + ("\n" if lines else "")
 
@@ -221,7 +228,7 @@ class Finding:
 
 @dataclass(frozen=True)
 class DetectorResult:
-    """Result from the optional Souffle-backed detector runner."""
+    """Result from the detector runner (Souffle or built-in evaluator)."""
 
     status: Literal["ok", "unavailable", "failed"]
     findings: tuple[Finding, ...] = ()
@@ -229,6 +236,7 @@ class DetectorResult:
     stderr: str = ""
     message: str = ""
     output_dir: Path | None = None
+    backend: Literal["souffle", "builtin", "none"] = "none"
 
 
 @dataclass(frozen=True)
@@ -241,10 +249,11 @@ class AuditReport:
     evidence_result: EvidenceAlignmentResult | None = None
     detector_result: DetectorResult | None = None
     notes: tuple[str, ...] = field(default_factory=tuple)
+    diagnostics: dict[str, float] | None = None
 
 
 def _quote_arg(arg: str) -> str:
-    if arg.isdigit():
+    if _INT_LIKE_RE.match(arg):
         return arg
     escaped = arg.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'

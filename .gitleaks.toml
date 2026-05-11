@@ -1,0 +1,33 @@
+# Gitleaks configuration for Semia Skillscan.
+#
+# Extends the bundled default ruleset (recommended) and adds project-specific
+# allowlists for sample env files and test fixtures.
+#
+# Run locally:
+#   gitleaks detect --redact -v --config .gitleaks.toml
+#   gitleaks protect --redact -v --staged --config .gitleaks.toml
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Sample env files contain placeholder values only"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)\.env\.sample$''',
+  '''(^|/)\.env\.template$''',
+]
+
+[[allowlists]]
+description = "Test fixtures may embed synthetic credentials"
+paths = [
+  '''(^|/)tests/.*fixtures?/.*''',
+]
+
+[[allowlists]]
+description = "Documented placeholder credentials"
+regexes = [
+  '''sk-(example|fake|test|placeholder|YOUR[_A-Z]*KEY[_A-Z]*HERE)\b''',
+  '''sk-ant-(example|fake|test|placeholder)\b''',
+  '''(?i)<(your[- _]?)?api[- _]?key>''',
+]

@@ -1,4 +1,7 @@
+# Agent ignore files
 .omx/
+.claude/
+.codex/
 
 # Python
 __pycache__/

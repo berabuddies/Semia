@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Configuration shared by Semia LLM synthesis modules."""
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ DEFAULT_PLATEAU_PATIENCE = 3
 DEFAULT_MAX_DOC_BYTES = 2 * 1024 * 1024
 SYNTHESIZED_FACTS = "synthesized_facts.dl"
 SYNTHESIS_METADATA = "synthesis_metadata.json"
+_DOTENV_LOADED = False
 
 Validator = Callable[[Path, Path], dict[str, Any]]
 
@@ -43,6 +46,7 @@ class SynthesisSettings:
 
     @classmethod
     def from_env(cls) -> "SynthesisSettings":
+        load_dotenv()
         return cls(
             iterations=_env_int("SEMIA_SYNTHESIS_N_ITERATIONS", DEFAULT_SYNTHESIS_ITERATIONS),
             max_retries=_env_int("SEMIA_SYNTHESIS_MAX_RETRIES", DEFAULT_SYNTHESIS_MAX_RETRIES),
@@ -60,29 +64,77 @@ class SynthesisSettings:
 
 
 def default_provider(value: str | None = None) -> str:
+    load_dotenv()
     return value or os.environ.get("SEMIA_LLM_PROVIDER") or "openai"
 
 
 def default_model(value: str | None = None, provider: str | None = None) -> str | None:
+    load_dotenv()
     configured = value or os.environ.get("SEMIA_LLM_MODEL")
     if configured:
         return configured
     if provider == "openai":
         return DEFAULT_OPENAI_MODEL
     if provider in {"anthropic", "claude"}:
-        return os.environ.get("ANTHROPIC_MODEL") or os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+        return (
+            os.environ.get("SEMIA_ANTHROPIC_MODEL")
+            or os.environ.get("SEMIA_AUDIT_ANTHROPIC_MODEL")
+            or os.environ.get("ANTHROPIC_MODEL")
+            or os.environ.get("ANTHROPIC_DEFAULT_OPUS_MODEL")
+            or os.environ.get("ANTHROPIC_DEFAULT_SONNET_MODEL")
+        )
     return None
 
 
 def timeout_seconds() -> int:
+    load_dotenv()
     return _env_int("SEMIA_LLM_TIMEOUT", DEFAULT_TIMEOUT_SECONDS)
 
 
+def load_dotenv(path: Path | None = None) -> None:
+    """Load a local .env file once, without overriding exported variables."""
+
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED and path is None:
+        return
+    env_path = path or Path.cwd() / ".env"
+    if not env_path.exists():
+        return
+    if path is None:
+        _DOTENV_LOADED = True
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        key, raw_value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = _parse_dotenv_value(raw_value.strip())
+
+
+def _reset_dotenv_for_tests() -> None:
+    """Reset the once-only .env load latch. Intended for test setup/teardown."""
+
+    global _DOTENV_LOADED
+    _DOTENV_LOADED = False
+
+
+def _parse_dotenv_value(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    return value.replace("\\n", "\n")
+
+
 def _env_int(name: str, default: int) -> int:
+    load_dotenv()
     raw = os.environ.get(name)
     return default if raw is None else int(raw)
 
 
 def _env_float(name: str, default: float) -> float:
+    load_dotenv()
     raw = os.environ.get(name)
     return default if raw is None else float(raw)

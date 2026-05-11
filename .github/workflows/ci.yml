@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     name: Python ${{ matrix.python-version }}
@@ -30,8 +34,23 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Install build tooling
+        run: uv pip install --system build twine
+
       - name: Run checks
         run: make check
 
       - name: Build package
         run: make build
+
+      - name: Upload built distributions
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-distributions
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/build-check.json
+          if-no-files-found: error
+          retention-days: 7

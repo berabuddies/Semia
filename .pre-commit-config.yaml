@@ -1,0 +1,40 @@
+# Pre-commit hooks for Semia Skillscan.
+#
+# Install once:    python -m pip install pre-commit && pre-commit install
+# Run on a diff:   git commit       (hooks run on staged files)
+# Run everything:  pre-commit run --all-files
+# Update pins:     pre-commit autoupdate
+
+minimum_pre_commit_version: "3.5.0"
+
+# Bundled hooks from pre-commit's standard repo + ruff + gitleaks.
+# Pins are updated via `pre-commit autoupdate`.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks

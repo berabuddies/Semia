@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Structural checker for SDL core facts and evidence sidecars."""
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from .schema import (
     EVIDENCE_TEXT_SCHEMA,
     EVIDENCE_UNIT_SCHEMA,
     KNOWN_FACT_SCHEMA,
+    MECHANICAL_FACT_RELATIONS,
 )
 
 
@@ -300,19 +303,26 @@ def _check_typed_evidence(
         if fact.args and fact.args[-1].startswith("su_") and evidence_units and fact.args[-1] not in evidence_units:
             _issue(issues, "EVD010", f"{fact.relation} references unknown evidence handle {fact.args[-1]!r}", fact=fact, severity="warning")
 
-    supported = 0
-    required_facts = 0
     evidence_keys = _evidence_target_keys(program)
     for fact in program.evidence_text_facts + program.evidence_facts:
         if _support_key_for_evidence(fact) not in core_keys:
             _issue(issues, "EVD011", f"{fact.relation} does not target an existing core fact", fact=fact, severity="warning")
 
     for fact in program.core_facts:
-        required_facts += 1
         if _support_key_for_core(fact) in evidence_keys:
-            supported += 1
-        elif required:
+            continue
+        if required and fact.relation not in MECHANICAL_FACT_RELATIONS:
             _issue(issues, "EVD012", f"core fact lacks typed evidence: {fact.render()}", fact=fact, severity="warning")
+
+    required_facts = sum(
+        1 for f in program.core_facts if f.relation not in MECHANICAL_FACT_RELATIONS
+    )
+    supported = sum(
+        1
+        for f in program.core_facts
+        if f.relation not in MECHANICAL_FACT_RELATIONS
+        and _support_key_for_core(f) in evidence_keys
+    )
 
     return supported / required_facts if required_facts else 1.0
 
@@ -343,3 +353,64 @@ def _support_key_for_evidence(fact: Fact) -> tuple[str, tuple[str, ...]]:
 
 def _declared_values(by_rel: dict[str, list[Fact]]) -> set[str]:
     return {fact.args[0] for fact in by_rel.get("value", []) if fact.args}
+
+
+def compute_ssa_input_availability(program: FactProgram) -> float:
+    """Fraction of call_input variables sourced from declared values,
+    action_param, or an earlier call_output in the same action chain.
+
+    1.0 means every input has a source; lower scores hint at LLM-hallucinated
+    variables. Mechanical lint, not a structural error.
+    """
+
+    by_rel = _index(program.core_facts)
+    action_calls: dict[str, set[str]] = defaultdict(set)
+    call_to_action: dict[str, str] = {}
+    for f in by_rel.get("call", []):
+        if len(f.args) >= 2:
+            action_calls[f.args[1]].add(f.args[0])
+            call_to_action[f.args[0]] = f.args[1]
+    call_outputs: dict[str, set[str]] = defaultdict(set)
+    for f in by_rel.get("call_output", []):
+        if len(f.args) >= 2:
+            call_outputs[f.args[0]].add(f.args[1])
+    action_params: dict[str, set[str]] = defaultdict(set)
+    for f in by_rel.get("action_param", []):
+        if len(f.args) >= 3:
+            action_params[f.args[0]].add(f.args[2])
+    values_by_action: dict[str, set[str]] = defaultdict(set)
+    for f in by_rel.get("value", []):
+        if len(f.args) >= 2:
+            values_by_action[f.args[1]].add(f.args[0])
+    backward: dict[str, set[str]] = defaultdict(set)
+    for rel in ("call_unconditional", "call_conditional"):
+        for f in by_rel.get(rel, []):
+            if len(f.args) >= 2:
+                backward[f.args[1]].add(f.args[0])
+
+    total = 0
+    available = 0
+    for f in by_rel.get("call_input", []):
+        if len(f.args) < 2:
+            continue
+        total += 1
+        c, v = f.args[0], f.args[1]
+        a = call_to_action.get(c)
+        if v in action_params.get(a, set()) or v in values_by_action.get(a, set()):
+            available += 1
+            continue
+        seen: set[str] = set()
+        queue = list(backward.get(c, set()))
+        found = False
+        while queue:
+            x = queue.pop()
+            if x in seen:
+                continue
+            seen.add(x)
+            if v in call_outputs.get(x, set()):
+                found = True
+                break
+            queue.extend(backward.get(x, set()))
+        if found:
+            available += 1
+    return available / total if total else 1.0

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Validate Semia plugin manifests without third-party dependencies."""
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_ROOT = ROOT / "packages" / "semia-plugins"
 IDENTITY_KEYS = ("id", "name", "display_name", "displayName")
+EXPECTED_LICENSE = "Apache-2.0"
 
 
 def is_manifest(path: Path) -> bool:
@@ -46,8 +49,8 @@ def validate_manifest(path: Path) -> list[str]:
             f"{path}: manifest should include a non-empty identity field "
             f"({', '.join(IDENTITY_KEYS)})"
         )
-    if data.get("license") != "CC-BY-NC-ND-4.0":
-        errors.append(f"{path}: license must be CC-BY-NC-ND-4.0")
+    if data.get("license") != EXPECTED_LICENSE:
+        errors.append(f"{path}: license must be {EXPECTED_LICENSE}")
 
     return errors
 
