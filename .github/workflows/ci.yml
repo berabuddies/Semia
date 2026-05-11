@@ -125,6 +125,12 @@ jobs:
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           files: coverage.xml
+          # Codecov rejects tokenless uploads against protected branches
+          # ("Token required because branch is protected"). Set the
+          # `CODECOV_TOKEN` repo secret from
+          # https://app.codecov.io/gh/RiemaLabs/semia-skillscan/settings
+          # for the badge to populate.
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
   types:
