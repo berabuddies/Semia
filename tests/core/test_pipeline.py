@@ -373,7 +373,7 @@ class ReportTests(unittest.TestCase):
             result = report(run_dir, format="md")
 
             self.assertIsInstance(result, str)
-            self.assertIn("Semia Skillscan Report", result)
+            self.assertIn("Semia Report", result)
             self.assertTrue((run_dir / ARTIFACT_REPORT_MD).exists())
 
     def test_report_json_returns_dict_and_writes_file(self) -> None:
@@ -394,7 +394,7 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(result["version"], "2.1.0")
             self.assertEqual(on_disk["version"], "2.1.0")
             self.assertIn("runs", result)
-            self.assertEqual(result["runs"][0]["tool"]["driver"]["name"], "Semia Skillscan")
+            self.assertEqual(result["runs"][0]["tool"]["driver"]["name"], "Semia")
 
     def test_report_sarif_includes_rule_per_finding_label(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -488,7 +488,7 @@ class PipelineIntegrationTests(unittest.TestCase):
             manifest = json.loads((run_dir / ARTIFACT_MANIFEST).read_text(encoding="utf-8"))
             for key in ("prepared_at", "synthesis_written_at", "checked_at", "detected_at"):
                 self.assertIn(key, manifest, f"manifest missing {key}")
-            self.assertIn("Semia Skillscan Report", md)
+            self.assertIn("Semia Report", md)
 
     def test_valid_v2_facts_program_valid_with_coverage(self) -> None:
         with tempfile.TemporaryDirectory() as td:

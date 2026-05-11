@@ -1,6 +1,6 @@
 # Release checklist
 
-Semia Skillscan is intended to be built around Skill Behavior Mapping, with
+Semia is intended to be built around Skill Behavior Mapping, with
 deterministic tooling as the release boundary. A release is not ready until the
 host integrations and stdlib quality gates agree.
 
@@ -13,7 +13,7 @@ secret.
 1. **PyPI side** — on https://pypi.org, open the project page →
    *Publishing* → *Add a new pending publisher* and fill in:
    - Owner: `RiemaLabs`
-   - Repository name: `semia-skillscan`
+   - Repository name: `Semia`
    - Workflow filename: `release.yml`
    - Environment name: `pypi`
 2. **GitHub side** — *Settings* → *Environments* → *New environment* `pypi`.
@@ -77,9 +77,9 @@ python -m pip install build twine
 
 The OpenClaw integration is distributed as a *skill* (not a code plugin) via
 the official [ClawHub](https://github.com/openclaw/clawhub) registry. The
-skill body is `packages/semia-plugins/openclaw/skills/semia-skillscan/`; its
+skill body is `packages/semia-plugins/openclaw/skills/semia/`; its
 frontmatter declares `requires.bins: [semia]` plus an
-`install: [{kind: uv, package: semia-skillscan}]` block so ClawHub can
+`install: [{kind: uv, package: semia}]` block so ClawHub can
 provision the `semia` CLI on first use.
 
 ### Automated publish (default)
@@ -109,9 +109,9 @@ If the workflow is unavailable, publish from a local checkout:
 npm i -g clawhub
 clawhub login                                    # or: clawhub login --token clh_...
 clawhub skill publish \
-  packages/semia-plugins/openclaw/skills/semia-skillscan \
-  --slug semia-skillscan \
-  --name "Semia Skillscan" \
+  packages/semia-plugins/openclaw/skills/semia \
+  --slug semia \
+  --name "Semia" \
   --version 0.1.0 \
   --changelog "Release 0.1.0"
 ```
@@ -119,5 +119,5 @@ clawhub skill publish \
 End users install with:
 
 ```bash
-openclaw plugins install clawhub:semia-skillscan
+openclaw plugins install clawhub:semia
 ```

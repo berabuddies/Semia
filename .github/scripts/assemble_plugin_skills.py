@@ -6,10 +6,10 @@ Each plugin host (codex, claude-code, openclaw) keeps a tiny ``_host.md``
 overlay next to its assembled ``SKILL.md``. The overlay holds the host-
 specific frontmatter, opening section, and any prerequisite / CLI-invocation
 text; the canonical workflow body lives in
-``packages/semia-plugins/shared/skills/semia-skillscan/SKILL.md``.
+``packages/semia-plugins/shared/skills/semia/SKILL.md``.
 
 This script concatenates the overlay (verbatim) and the shared body (with
-its frontmatter and top-level ``# Semia Skillscan`` heading stripped, so the
+its frontmatter and top-level ``# Semia`` heading stripped, so the
 host's own H1 stays on top). It is byte-deterministic and CI verifies the
 committed files match what this script produces — same pattern as
 ``build_zipapp.py``.
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SHARED = ROOT / "packages" / "semia-plugins" / "shared" / "skills" / "semia-skillscan" / "SKILL.md"
+SHARED = ROOT / "packages" / "semia-plugins" / "shared" / "skills" / "semia" / "SKILL.md"
 PLUGIN_ROOT = ROOT / "packages" / "semia-plugins"
 HOSTS = ("codex", "claude-code", "openclaw")
 
@@ -59,11 +59,11 @@ def _strip_top_h1(text: str) -> str:
 
 
 def _overlay_path(host: str) -> Path:
-    return PLUGIN_ROOT / host / "skills" / "semia-skillscan" / "_host.md"
+    return PLUGIN_ROOT / host / "skills" / "semia" / "_host.md"
 
 
 def _skill_path(host: str) -> Path:
-    return PLUGIN_ROOT / host / "skills" / "semia-skillscan" / "SKILL.md"
+    return PLUGIN_ROOT / host / "skills" / "semia" / "SKILL.md"
 
 
 def _shared_body() -> str:

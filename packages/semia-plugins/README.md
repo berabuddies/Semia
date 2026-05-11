@@ -2,10 +2,10 @@
 
 Semia is distributed as Skill Behavior Mapping tooling plus host integrations.
 These packages expose the same audit workflow to Codex, Claude Code, and
-OpenClaw while sharing one canonical `semia-skillscan` skill.
+OpenClaw while sharing one canonical `semia` skill.
 
 ```text
-shared/skills/semia-skillscan/SKILL.md  canonical workflow
+shared/skills/semia/SKILL.md  canonical workflow
 codex/                                  Codex plugin package
 claude-code/                            Claude Code plugin package
 openclaw/                               OpenClaw plugin package

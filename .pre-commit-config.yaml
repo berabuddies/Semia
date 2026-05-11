@@ -1,4 +1,4 @@
-# Pre-commit hooks for Semia Skillscan.
+# Pre-commit hooks for Semia.
 #
 # Install once:    python -m pip install pre-commit && pre-commit install
 # Run on a diff:   git commit       (hooks run on staged files)

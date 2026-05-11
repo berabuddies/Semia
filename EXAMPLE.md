@@ -1,14 +1,14 @@
 # How one email can hack you
 
-A worked example of why **Semia Skillscan** exists: the kind of agent
+A worked example of why **Semia** exists: the kind of agent
 skill it is built to catch — *before* you install it.
 
-> Skillscan reads a skill as data, never executes it, and produces an
+> Semia reads a skill as data, never executes it, and produces an
 > evidence-backed report of every capability the skill may exercise.
 
 If you came here from a blog post or a tweet, start with
 [README.md](README.md) for the 30-second tour, then come back. If you
-already know what Skillscan is, keep reading.
+already know what Semia is, keep reading.
 
 ---
 
@@ -103,9 +103,9 @@ send one email.
 
 ---
 
-## What Skillscan tells you before you install
+## What Semia tells you before you install
 
-Skillscan reads the skill as data and writes a *behavior map*: typed
+Semia reads the skill as data and writes a *behavior map*: typed
 Datalog facts that name every capability the skill may exercise, each
 tied to a specific source line. For this skill, the map contains:
 
@@ -118,7 +118,7 @@ tied to a specific source line. For this skill, the map contains:
 | `fs_write`          | writes user-controlled state to disk                                     | the `~/Library/LaunchAgents/com.email.dailysummary.plist` file in Step 5    |
 | shared-session flag | every effect above runs in the user's real, logged-in browser            | `--browser real` in Step 2                                                  |
 
-Skillscan's detectors flag the cross-product: a `net_read` whose content
+Semia's detectors flag the cross-product: a `net_read` whose content
 flows into an `agent_call` whose output reaches `code_eval` in the same
 authenticated session is the canonical *prompt-injection-to-RCE* shape.
 Combined with the persistence loop from Step 5, the finding is
@@ -143,7 +143,7 @@ You also get:
 Install once:
 
 ```bash
-pip install semia-skillscan
+pip install semia
 ```
 
 Audit any skill directory:
@@ -176,7 +176,7 @@ the local CLI.
 - [Plugin protocol](docs/plugin-protocol.md) — the contract every host
   integration must honor, including the hostile-input rules that keep
   the audited skill from hijacking the auditor.
-- [README — Trust model](README.md#trust-model) — what Skillscan does
+- [README — Trust model](README.md#trust-model) — what Semia does
   and does *not* do during a scan.
 - [SECURITY.md](SECURITY.md) — vulnerability reporting and the threat
   model.

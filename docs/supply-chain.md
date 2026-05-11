@@ -1,6 +1,6 @@
 # Supply-chain policy
 
-Semia Skillscan scans untrusted agent-skill content, so the release pipeline
+Semia scans untrusted agent-skill content, so the release pipeline
 must keep the analyzer itself boring, pinned, and auditable.
 
 ## Dependency posture

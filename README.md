@@ -3,9 +3,9 @@
 > **Security audit for AI agent skills.** Know what a skill *can* do
 > before you trust it.
 
-[![CI](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/ci.yml/badge.svg)](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/ci.yml)
-[![Lint](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/lint.yml/badge.svg)](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/lint.yml)
-[![codecov](https://codecov.io/gh/RiemaLabs/semia-skillscan/graph/badge.svg)](https://codecov.io/gh/RiemaLabs/semia-skillscan)
+[![CI](https://github.com/RiemaLabs/Semia/actions/workflows/ci.yml/badge.svg)](https://github.com/RiemaLabs/Semia/actions/workflows/ci.yml)
+[![Lint](https://github.com/RiemaLabs/Semia/actions/workflows/lint.yml/badge.svg)](https://github.com/RiemaLabs/Semia/actions/workflows/lint.yml)
+[![codecov](https://codecov.io/gh/RiemaLabs/Semia/graph/badge.svg)](https://codecov.io/gh/RiemaLabs/Semia)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
@@ -32,7 +32,7 @@ Pick whichever fits how you already work.
 ### As a CLI
 
 ```bash
-pip install semia-skillscan
+pip install semia
 semia scan ./some-skill --out .semia/runs/some-skill
 ```
 
@@ -49,7 +49,7 @@ Install the plugin once. Each host has its own flow.
 *Shell (one-liner):*
 
 ```bash
-codex plugin marketplace add RiemaLabs/semia-skillscan
+codex plugin marketplace add RiemaLabs/Semia
 ```
 
 *Interactive plugin manager inside the Codex CLI:*
@@ -57,22 +57,22 @@ codex plugin marketplace add RiemaLabs/semia-skillscan
 1. Launch `codex`.
 2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
 3. Press **←** (Left) to enter **Add marketplace**.
-4. Enter `RiemaLabs/semia-skillscan`.
+4. Enter `RiemaLabs/Semia`.
 
-Either path leaves the marketplace registered; install `semia-skillscan`
+Either path leaves the marketplace registered; install `semia`
 from the panel or by re-running the relevant install command.
 
 **Claude Code** — slash commands inside the Claude Code CLI (not a separate shell):
 
 ```text
-/plugin marketplace add RiemaLabs/semia-skillscan
-/plugin install semia-skillscan@semia-skillscan
+/plugin marketplace add RiemaLabs/Semia
+/plugin install semia@semia
 ```
 
 **OpenClaw** — one shell command registers the marketplace and installs:
 
 ```bash
-openclaw plugins install clawhub:semia-skillscan
+openclaw plugins install clawhub:semia
 ```
 
 Then in any chat with the host agent just ask:
@@ -166,7 +166,7 @@ email from an attacker turns that skill into a remote control for every
 site you are logged into.
 
 [See **EXAMPLE.md** for the full walkthrough →](EXAMPLE.md) — the skill
-source, the attack, why it works, and the exact capabilities Skillscan
+source, the attack, why it works, and the exact capabilities Semia
 surfaces before you install.
 
 ## How it works
@@ -197,7 +197,7 @@ Override with `SEMIA_DETECTOR_BACKEND=auto|souffle|builtin`.
 
 ## Trust model
 
-Skillscan is a security tool for analyzing untrusted content. The trust
+Semia is a security tool for analyzing untrusted content. The trust
 boundary is explicit:
 
 | Surface                   | Treatment                                                                        |
@@ -219,8 +219,8 @@ for the full host-integration contract, and
 From source (current):
 
 ```bash
-git clone https://github.com/RiemaLabs/semia-skillscan
-cd semia-skillscan
+git clone https://github.com/RiemaLabs/Semia
+cd semia
 python3 -m venv --clear .venv
 source .venv/bin/activate
 python -m pip install -e .
@@ -239,7 +239,7 @@ runs locally against staged changes so secrets do not reach the history.
 
 ### Providers
 
-Skillscan routes synthesis through one of four providers — two HTTP wire
+Semia routes synthesis through one of four providers — two HTTP wire
 formats and two local CLI shell-outs. The default is `responses` with
 model `gpt-5.5`, authenticated via `OPENAI_API_KEY`.
 
@@ -313,7 +313,7 @@ semia scan ./some-skill --out .semia/runs/some-skill --offline-baseline
 
 The Codex and Claude Code plugin bundles under `packages/semia-plugins/<host>/`
 ship with a self-contained `bin/semia.pyz` zipapp, so they work out of the
-box without a separate `pip install semia-skillscan`. The OpenClaw skill
+box without a separate `pip install semia`. The OpenClaw skill
 relies on the published `semia` CLI on `PATH` (ClawHub provisions it via
 `uv tool install`). Installing the Python package as well is recommended if
 you want `semia` available as a normal shell command alongside the in-host
@@ -324,7 +324,7 @@ workflow.
 *Shell (scripts and CI):*
 
 ```bash
-codex plugin marketplace add RiemaLabs/semia-skillscan
+codex plugin marketplace add RiemaLabs/Semia
 ```
 
 *Interactive plugin manager inside the Codex CLI:*
@@ -332,50 +332,50 @@ codex plugin marketplace add RiemaLabs/semia-skillscan
 1. Launch `codex`.
 2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
 3. Press **←** (Left) to enter **Add marketplace**.
-4. Enter `RiemaLabs/semia-skillscan`.
-5. Back in the plugin panel, install `semia-skillscan` from the newly-added
+4. Enter `RiemaLabs/Semia`.
+5. Back in the plugin panel, install `semia` from the newly-added
    marketplace.
 
 Headless setups can enable the plugin directly by adding the following to
 `~/.codex/config.toml`:
 
 ```toml
-[plugins."semia-skillscan@semia-skillscan"]
+[plugins."semia@semia"]
 enabled = true
 ```
 
 **Claude Code** — slash commands run inside the Claude Code CLI (not a separate shell):
 
 ```text
-/plugin marketplace add RiemaLabs/semia-skillscan
-/plugin install semia-skillscan@semia-skillscan
+/plugin marketplace add RiemaLabs/Semia
+/plugin install semia@semia
 ```
 
 The `name@marketplace` form on `/plugin install` is required — the second
-`semia-skillscan` is the marketplace identifier from the project's
+`semia` is the marketplace identifier from the project's
 `marketplace.json`. The marketplace registration step (`/plugin marketplace
 add ...`) is only available as a slash command inside the CLI; there is no
 `claude plugin marketplace add` shell equivalent in the official
 [plugins reference](https://code.claude.com/docs/en/plugins-reference#cli-commands-reference).
 Once installed, the management subcommands (`install`, `uninstall`,
 `enable`, `disable`, `list`, …) are also exposed as shell commands —
-e.g. `claude plugin install semia-skillscan@semia-skillscan --scope project`.
+e.g. `claude plugin install semia@semia --scope project`.
 See [Discover and install plugins](https://code.claude.com/docs/en/discover-plugins)
 for the full UX.
 
 **OpenClaw** — install from ClawHub:
 
 ```bash
-openclaw plugins install clawhub:semia-skillscan
+openclaw plugins install clawhub:semia
 ```
 
 ClawHub will install the `semia` CLI on demand via `uv tool install
-semia-skillscan` (declared in the skill's `install` block). If you prefer to
+semia` (declared in the skill's `install` block). If you prefer to
 pre-provision it yourself:
 
 ```bash
-uv tool install semia-skillscan   # or: pip install semia-skillscan
-openclaw plugins install clawhub:semia-skillscan
+uv tool install semia   # or: pip install semia
+openclaw plugins install clawhub:semia
 ```
 
 ## Repository layout
@@ -397,8 +397,8 @@ tests/
 ## Development
 
 ```bash
-git clone https://github.com/RiemaLabs/semia-skillscan
-cd semia-skillscan
+git clone https://github.com/RiemaLabs/Semia
+cd semia
 python3 -m venv --clear .venv
 source .venv/bin/activate
 python -m pip install -e .
@@ -424,9 +424,9 @@ sign-off requirement.
 
 ## Project background
 
-The technique behind Semia Skillscan is described in the Semia paper
+The technique behind Semia is described in the Semia paper
 ([arXiv:2605.00314](https://arxiv.org/abs/2605.00314) ·
-[PDF](https://arxiv.org/pdf/2605.00314)). Skillscan is the
+[PDF](https://arxiv.org/pdf/2605.00314)). Semia is the
 **deterministic acceptance boundary** around behavior mapping: agents may
 extract facts, but only checked, evidence-grounded facts make it into a
 report.
@@ -444,11 +444,11 @@ and the DCO sign-off requirement.
 
 ## License & trademarks
 
-Semia Skillscan is released under the [Apache License 2.0](LICENSE). You
+Semia is released under the [Apache License 2.0](LICENSE). You
 may use, modify, and redistribute it freely, including for commercial
 purposes, subject to the terms of the license. See [NOTICE](NOTICE) for
 attribution.
 
-The names **"Semia"**, **"Skillscan"**, **"Semia Skillscan"**, and
+The names **"Semia"**, **"Semia"**, **"Semia"**, and
 **"RiemaLabs"** are trademarks of RiemaLabs and are **not** licensed under
 Apache-2.0. See [TRADEMARKS.md](TRADEMARKS.md) for the trademark policy.

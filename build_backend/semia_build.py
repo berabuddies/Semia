@@ -184,7 +184,7 @@ def _metadata() -> str:
         "Provides-Extra: anthropic\n"
         "Requires-Dist: anthropic>=0.40; extra == 'anthropic'\n"
         "Description-Content-Type: text/markdown\n"
-        "Project-URL: Homepage, https://github.com/RiemaLabs/semia-skillscan\n"
+        "Project-URL: Homepage, https://github.com/RiemaLabs/Semia\n"
         "\n"
         f"{readme}\n"
     )

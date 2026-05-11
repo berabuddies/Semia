@@ -1,6 +1,6 @@
 # Security Policy
 
-Semia Skillscan is a static-analysis tool for AI agent skills. We treat the
+Semia is a static-analysis tool for AI agent skills. We treat the
 audited skill as untrusted input, and we hold our own analyzer code to the
 same standard of care.
 
@@ -49,7 +49,7 @@ anonymous.
 
 ## Threat Model
 
-Semia Skillscan analyzes **untrusted** skill content. The audited skill may:
+Semia analyzes **untrusted** skill content. The audited skill may:
 
 - Contain prompt-injection payloads aimed at the synthesizer LLM.
 - Contain malformed Markdown or source files designed to crash the parser.

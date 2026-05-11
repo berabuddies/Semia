@@ -12,7 +12,7 @@ name: Release
 #
 # 1. PyPI side:
 #    - Project page → Publishing → Add a new pending publisher with
-#      Owner: RiemaLabs, Repository: semia-skillscan,
+#      Owner: RiemaLabs, Repository: Semia,
 #      Workflow filename: release.yml, Environment: pypi.
 #
 # 2. GitHub side (PyPI environment):
@@ -79,8 +79,10 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
-      - name: Install build tooling
-        run: uv pip install --system build twine
+      - name: Install dev dependencies
+        # Reads `[dependency-groups].dev` from pyproject.toml — same tool set
+        # as `uv sync` locally, so a release-time pin lives in one place.
+        run: uv pip install --system --group dev
 
       - name: Rebuild plugin zipapps and verify they match what is committed
         # The sdist embeds packages/semia-plugins/*/bin/*.pyz; refuse to
@@ -130,12 +132,12 @@ jobs:
           path: .
           format: cyclonedx-json
           output-file: dist/sbom.cdx.json
-          artifact-name: semia-skillscan-sbom.cdx.json
+          artifact-name: semia-sbom.cdx.json
 
       - name: Attest build provenance for wheel and sdist
         # Mints a SLSA provenance attestation that links each built artifact
         # to this exact workflow run. Verifiers can use
-        # `gh attestation verify <file> --repo RiemaLabs/semia-skillscan`.
+        # `gh attestation verify <file> --repo RiemaLabs/Semia`.
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: |
@@ -154,14 +156,14 @@ jobs:
       - name: Upload release-check artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: semia-skillscan-build-check
+          name: semia-build-check
           path: dist/build-check.json
           if-no-files-found: error
 
       - name: Upload SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: semia-skillscan-sbom
+          name: semia-sbom
           path: dist/sbom.cdx.json
           if-no-files-found: error
 
@@ -173,7 +175,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/semia-skillscan
+      url: https://pypi.org/p/semia
 
     # `id-token: write` is required for PyPI Trusted Publishing (OIDC).
     permissions:
@@ -202,7 +204,7 @@ jobs:
 
     environment:
       name: clawhub
-      url: https://clawhub.ai/skills/semia-skillscan
+      url: https://clawhub.ai/skills/semia
 
     permissions:
       contents: read
@@ -225,7 +227,7 @@ jobs:
           TAG_VERSION: ${{ steps.ver.outputs.version }}
         run: |
           SKILL_VERSION=$(awk '/^version:/ {print $2; exit}' \
-            packages/semia-plugins/openclaw/skills/semia-skillscan/SKILL.md)
+            packages/semia-plugins/openclaw/skills/semia/SKILL.md)
           if [ "$SKILL_VERSION" != "$TAG_VERSION" ]; then
             echo "::error::SKILL.md version ($SKILL_VERSION) does not match tag ($TAG_VERSION)"
             exit 1
@@ -244,8 +246,8 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           clawhub skill publish \
-            packages/semia-plugins/openclaw/skills/semia-skillscan \
-            --slug semia-skillscan \
-            --name "Semia Skillscan" \
+            packages/semia-plugins/openclaw/skills/semia \
+            --slug semia \
+            --name "Semia" \
             --version "$VERSION" \
             --changelog "Release $VERSION"

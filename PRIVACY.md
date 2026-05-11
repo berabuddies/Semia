@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Semia Skillscan is a local static-analysis tool. It does not collect telemetry
+Semia is a local static-analysis tool. It does not collect telemetry
 or analytics, does not call home, and is not operated as a hosted service by
 RiemaLabs. This policy describes the data Semia handles on the user's machine
 and what it sends to the LLM providers a user explicitly configures.
@@ -30,7 +30,7 @@ only when the user has chosen an LLM provider:
 
 The user's API keys are read from environment variables (`OPENAI_API_KEY`,
 `ANTHROPIC_API_KEY`, etc.) and forwarded only to the corresponding provider.
-Skillscan does not record, log, or transmit those keys anywhere else.
+Semia does not record, log, or transmit those keys anywhere else.
 
 Inside Codex, Claude Code, or OpenClaw plugin mode, synthesis runs inside the
 existing host agent session — Semia itself does not initiate any additional
@@ -58,7 +58,7 @@ those logs stay local.
 
 ## Children
 
-Semia Skillscan is a developer security tool. It is not directed at children
+Semia is a developer security tool. It is not directed at children
 under 13 and we do not knowingly collect data from anyone.
 
 ## Changes to this policy

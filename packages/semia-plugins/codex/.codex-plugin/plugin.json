@@ -1,5 +1,5 @@
 {
-  "name": "semia-skillscan",
+  "name": "semia",
   "version": "0.1.0",
   "description": "Representation Synthesis workflow for auditing agent skills in Codex.",
   "author": {
@@ -7,8 +7,8 @@
     "email": "maintainers@semia.dev",
     "url": "https://github.com/RiemaLabs"
   },
-  "homepage": "https://github.com/RiemaLabs/semia-skillscan",
-  "repository": "https://github.com/RiemaLabs/semia-skillscan",
+  "homepage": "https://github.com/RiemaLabs/Semia",
+  "repository": "https://github.com/RiemaLabs/Semia",
   "license": "Apache-2.0",
   "keywords": [
     "semia",
@@ -19,7 +19,7 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Semia Skillscan",
+    "displayName": "Semia",
     "shortDescription": "Audit agent skills with Semia SDL V2.",
     "longDescription": "Runs a plugin-first Semia workflow where Codex performs Stage 2 evidence-backed SDL extraction and deterministic Semia tools prepare, validate, detect, and report findings.",
     "developerName": "RiemaLabs",
@@ -28,9 +28,9 @@
       "Interactive",
       "Write"
     ],
-    "websiteURL": "https://github.com/RiemaLabs/semia-skillscan",
-    "privacyPolicyURL": "https://github.com/RiemaLabs/semia-skillscan/blob/main/PRIVACY.md",
-    "termsOfServiceURL": "https://github.com/RiemaLabs/semia-skillscan/blob/main/LICENSE",
+    "websiteURL": "https://github.com/RiemaLabs/Semia",
+    "privacyPolicyURL": "https://github.com/RiemaLabs/Semia/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/RiemaLabs/Semia/blob/main/LICENSE",
     "defaultPrompt": [
       "semia scan ./some-skill",
       "Run Semia audit on this skill",

@@ -5,8 +5,8 @@
 A corpus of real public agent skills used as inputs for `semia-core`
 corpus-level smoke tests.
 
-- **Source**: copied from `semia-skillscan/resources/skills/skills/`, selected via
-  `semia-skillscan/scope/dev_dataset.scope`.
+- **Source**: copied from `semia/resources/skills/skills/`, selected via
+  `semia/scope/dev_dataset.scope`.
 - **Date copied**: 2026-05-11.
 - **Counts**: 50 skill directories under 35 owner directories, 259 files,
   ~1.6 MB on disk.

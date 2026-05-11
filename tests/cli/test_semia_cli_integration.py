@@ -82,7 +82,7 @@ class SemiaCliIntegrationTests(unittest.TestCase):
             self.assertTrue((run_dir / "synthesized_facts_normalized.dl").exists())
             self.assertTrue((run_dir / "detection_result.json").exists())
             self.assertTrue((run_dir / "report.md").exists())
-            self.assertIn("# Semia Skillscan Report", stdout.getvalue())
+            self.assertIn("# Semia Report", stdout.getvalue())
 
             sarif_stdout = io.StringIO()
             sarif_stderr = io.StringIO()

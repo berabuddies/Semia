@@ -4,7 +4,7 @@ build-backend = "semia_build"
 backend-path = ["build_backend"]
 
 [project]
-name = "semia-skillscan"
+name = "semia"
 version = "0.1.0"
 description = "Skill Behavior Mapping for AI agent skill auditing."
 readme = "README.md"
@@ -28,8 +28,20 @@ dependencies = []
 semia = "semia_cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/RiemaLabs/semia-skillscan"
-Issues = "https://github.com/RiemaLabs/semia-skillscan/issues"
+Homepage = "https://github.com/RiemaLabs/Semia"
+Issues = "https://github.com/RiemaLabs/Semia/issues"
+
+# PEP 735 dev tooling. `uv sync` installs the `dev` group by default; CI
+# installs the same set with `uv sync --group dev`. None of these are runtime
+# deps — they only back the Makefile targets and pre-commit hooks.
+[dependency-groups]
+dev = [
+    "pre-commit",   # `pre-commit run`
+    "coverage",     # `make coverage`
+    "build",        # `make dist-build`
+    "twine",        # `make twine-check`
+    "mypy",         # `make types`
+]
 
 [tool.ruff]
 line-length = 100

@@ -1,9 +1,9 @@
 ---
-name: semia-skillscan
+name: semia
 description: Audit an agent skill with Semia Skill Behavior Mapping. Use when the user asks to run `semia scan <path>`, "Run Semia audit on this skill", audit a skill package, or review a skill/integration for capability, data-flow, secret, installer, network, filesystem, or policy risk.
 ---
 
-# Semia Skillscan
+# Semia
 
 Semia builds a behavior map: it turns a skill into grounded SDL facts, then
 checks those facts deterministically. The CLI and core library are the

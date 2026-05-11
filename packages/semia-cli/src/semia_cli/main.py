@@ -29,7 +29,7 @@ SYNTHESIS_PLATEAU_MIN_IMPROVEMENT_DEFAULT = 0.01
 
 def _get_version() -> str:
     try:
-        return importlib.metadata.version("semia-skillscan")
+        return importlib.metadata.version("semia")
     except importlib.metadata.PackageNotFoundError:
         return "0.1.0+unknown"
 

@@ -90,10 +90,10 @@ class DetectorReportTests(unittest.TestCase):
     def test_render_markdown_report(self) -> None:
         check = check_program('skill("demo").\n')
         markdown = render_markdown_report(
-            AuditReport(title="Semia Skillscan", source_id="demo", check_result=check)
+            AuditReport(title="Semia", source_id="demo", check_result=check)
         )
 
-        self.assertIn("# Semia Skillscan", markdown)
+        self.assertIn("# Semia", markdown)
         self.assertIn("Structural Check", markdown)
 
     @unittest.skipUnless(shutil.which("souffle"), "souffle not installed")
@@ -385,7 +385,7 @@ class SarifReportTests(unittest.TestCase):
             payload = report(root, format="sarif")
         self.assertEqual(payload["version"], "2.1.0")
         self.assertIn("sarif-2.1.0", payload["$schema"])
-        self.assertEqual(payload["runs"][0]["tool"]["driver"]["name"], "Semia Skillscan")
+        self.assertEqual(payload["runs"][0]["tool"]["driver"]["name"], "Semia")
 
     def test_sarif_dedupes_rules_by_label(self) -> None:
         findings = [

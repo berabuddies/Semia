@@ -1,4 +1,4 @@
-# Contributing to Semia Skillscan
+# Contributing to Semia
 
 Thanks for taking the time to contribute. This project is licensed under
 [Apache-2.0](LICENSE), and contributions of any size are welcome — bug
@@ -132,5 +132,5 @@ unacceptable behavior to **conduct@riema.xyz**.
 
 By contributing, you agree that your contributions will be licensed under
 the [Apache License 2.0](LICENSE), the same license that covers this
-project. Trademarks ("Semia", "Skillscan", and the RiemaLabs marks) are
+project. Trademarks ("Semia" and the RiemaLabs marks) are
 **not** licensed under Apache-2.0 — see [TRADEMARKS.md](TRADEMARKS.md).

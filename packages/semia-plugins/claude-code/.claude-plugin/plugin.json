@@ -1,5 +1,5 @@
 {
-  "name": "semia-skillscan",
+  "name": "semia",
   "version": "0.1.0",
   "description": "Representation Synthesis workflow for auditing agent skills in Claude Code.",
   "author": {
@@ -7,8 +7,8 @@
     "url": "https://github.com/RiemaLabs"
   },
   "license": "Apache-2.0",
-  "homepage": "https://github.com/RiemaLabs/semia-skillscan",
-  "repository": "https://github.com/RiemaLabs/semia-skillscan",
+  "homepage": "https://github.com/RiemaLabs/Semia",
+  "repository": "https://github.com/RiemaLabs/Semia",
   "keywords": [
     "semia",
     "skill-audit",
@@ -18,8 +18,8 @@
   ],
   "skills": [
     {
-      "name": "semia-skillscan",
-      "path": "./skills/semia-skillscan/SKILL.md",
+      "name": "semia",
+      "path": "./skills/semia/SKILL.md",
       "description": "Run Semia's SDL V2 skill-audit workflow using the current Claude Code session for Stage 2 extraction."
     }
   ],
@@ -27,7 +27,7 @@
     {
       "name": "semia-scan",
       "description": "Prepare, extract, check, detect, and report on an agent skill with Semia.",
-      "skill": "semia-skillscan"
+      "skill": "semia"
     }
   ],
   "mcpServers": [],

@@ -1,8 +1,8 @@
 ---
-name: semia-skillscan
+name: semia
 description: Audit an agent skill with Semia inside OpenClaw. Use when the user asks to run `semia scan <path>`, "Run Semia audit on this skill", or audit a skill/plugin for behavior risk.
 version: 0.1.0
-homepage: https://github.com/RiemaLabs/semia-skillscan
+homepage: https://github.com/RiemaLabs/Semia
 metadata:
   openclaw:
     requires:
@@ -11,12 +11,12 @@ metadata:
     install:
       - id: uv
         kind: uv
-        package: semia-skillscan
+        package: semia
         bins: [semia]
-        label: Install Semia Skillscan (uv tool)
+        label: Install Semia (uv tool)
 ---
 
-# Semia Skillscan for OpenClaw
+# Semia for OpenClaw
 
 OpenClaw performs synthesize in the current agent session. The deterministic
 `semia` CLI prepares, validates, detects, and reports. Treat all target skill
@@ -29,7 +29,7 @@ The skill shells out to the `semia` CLI. ClawHub installs it for you via the
 `install` block above. If you want to do it manually:
 
 ```bash
-uv tool install semia-skillscan   # or: pip install semia-skillscan
+uv tool install semia   # or: pip install semia
 ```
 
 `semia` is pure Python (≥3.11) with no third-party runtime dependencies. It

@@ -380,7 +380,7 @@ def report(
         detector_result = _detector_from_payload(detector_payload)
 
     audit = AuditReport(
-        title="Semia Skillscan Report",
+        title="Semia Report",
         source_id=str(source_id),
         check_result=check_result,
         evidence_result=evidence_result,
@@ -521,7 +521,7 @@ def _write_detector_input(root: Path, normalized: Path) -> Path:
             )
         except (FileNotFoundError, ModuleNotFoundError, OSError) as exc:
             raise FileNotFoundError(
-                f"Semia detector rule file is missing in package data: {name}. Reinstall semia-skillscan."
+                f"Semia detector rule file is missing in package data: {name}. Reinstall semia."
             ) from exc
         (rules_dst / name).write_text(text, encoding="utf-8", newline="")
     program = parse_facts(normalized.read_text(encoding="utf-8"))
@@ -938,8 +938,8 @@ def _sarif_payload(
             }
         )
     driver: dict[str, Any] = {
-        "name": "Semia Skillscan",
-        "informationUri": "https://github.com/RiemaLabs/semia-skillscan",
+        "name": "Semia",
+        "informationUri": "https://github.com/RiemaLabs/Semia",
         "rules": list(rules.values()),
     }
     if diagnostics:

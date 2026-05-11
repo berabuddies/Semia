@@ -59,8 +59,11 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
-      - name: Install build tooling
-        run: uv pip install --system build twine
+      - name: Install dev dependencies
+        # Reads `[dependency-groups].dev` from pyproject.toml — keeps the CI
+        # toolchain (pre-commit, coverage, build, twine, mypy) in lockstep
+        # with what `uv sync` gives a contributor locally.
+        run: uv pip install --system --group dev
 
       - name: Run checks
         run: make check
@@ -77,7 +80,7 @@ jobs:
 
       - name: Reassemble per-host SKILL.md files and verify they match what is committed
         # The shared workflow body lives in
-        # packages/semia-plugins/shared/skills/semia-skillscan/SKILL.md; each
+        # packages/semia-plugins/shared/skills/semia/SKILL.md; each
         # host's _host.md overlay supplies the host-specific intro. Drift here
         # means a contributor forgot to re-run `make assemble-plugin-skills`.
         run: |
@@ -112,10 +115,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Install coverage tooling
-        if: matrix.primary
-        run: uv pip install --system coverage
-
       - name: Run coverage
         if: matrix.primary
         run: make coverage
@@ -128,7 +127,7 @@ jobs:
           # Codecov rejects tokenless uploads against protected branches
           # ("Token required because branch is protected"). Set the
           # `CODECOV_TOKEN` repo secret from
-          # https://app.codecov.io/gh/RiemaLabs/semia-skillscan/settings
+          # https://app.codecov.io/gh/RiemaLabs/Semia/settings
           # for the badge to populate.
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
@@ -151,8 +150,8 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
-      - name: Install mypy
-        run: uv pip install --system mypy
+      - name: Install dev dependencies
+        run: uv pip install --system --group dev
 
       - name: Run mypy
         continue-on-error: true

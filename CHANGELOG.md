@@ -1,13 +1,13 @@
 # Changelog
 
-All notable changes to Semia Skillscan are documented in this file.
+All notable changes to Semia are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.1.0] - 2026-05-11
 
-Initial public release. Semia Skillscan ships a deterministic Skill Behavior
+Initial public release. Semia ships a deterministic Skill Behavior
 Mapping pipeline, an LLM-mediated synthesis step with a review loop, host
 plugins for Codex / Claude Code / OpenClaw, and an automated PyPI + ClawHub
 release pipeline.
@@ -49,7 +49,7 @@ release pipeline.
 - `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` env vars route HTTP providers
   at compatible endpoints (DeepSeek, OpenRouter, vLLM, local proxies).
 - Anthropic Messages provider uses raw `urllib` HTTP streaming with no
-  third-party SDK dependency — `pip install semia-skillscan` is enough.
+  third-party SDK dependency — `pip install semia` is enough.
 - `LlmSynthesisConfigError` non-retryable exception so missing API keys
   or binaries surface immediately instead of consuming the retry budget.
 - Review loop with plateau detection and incremental Datalog patch
@@ -84,15 +84,15 @@ release pipeline.
 
 - Codex plugin with marketplace manifest at
   [.agents/plugins/marketplace.json](.agents/plugins/marketplace.json);
-  installs via `codex plugin marketplace add RiemaLabs/semia-skillscan`.
+  installs via `codex plugin marketplace add RiemaLabs/Semia`.
 - Claude Code plugin with `.claude-plugin/plugin.json`; installs via
-  `/plugin marketplace add RiemaLabs/semia-skillscan`.
-- OpenClaw skill published as `semia-skillscan` on ClawHub; declares
+  `/plugin marketplace add RiemaLabs/Semia`.
+- OpenClaw skill published as `semia` on ClawHub; declares
   `requires.bins: [semia]` and `install: [{kind: uv, package:
-  semia-skillscan}]` so ClawHub provisions the CLI on first use. End
-  users install via `openclaw plugins install clawhub:semia-skillscan`.
+  semia}]` so ClawHub provisions the CLI on first use. End
+  users install via `openclaw plugins install clawhub:semia`.
 - Shared canonical workflow at
-  `packages/semia-plugins/shared/skills/semia-skillscan/SKILL.md`;
+  `packages/semia-plugins/shared/skills/semia/SKILL.md`;
   per-host SKILL.md generated from shared body + overlays via
   `make assemble-plugin-skills`, verified in CI via
   `make check-plugin-skills`.
@@ -128,4 +128,4 @@ release pipeline.
   `Apache-2.0`. `package_build_check.py` and
   `validate_plugin_manifests.py` enforce it.
 
-[0.1.0]: https://github.com/RiemaLabs/semia-skillscan/releases/tag/v0.1.0
+[0.1.0]: https://github.com/RiemaLabs/Semia/releases/tag/v0.1.0
