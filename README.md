@@ -1,6 +1,6 @@
-# Semia Skillscan
+# Semia
 
-> **Static security audit for AI agent skills.** Know what a skill *can* do
+> **Security audit for AI agent skills.** Know what a skill *can* do
 > before you trust it.
 
 [![CI](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/ci.yml/badge.svg)](https://github.com/RiemaLabs/semia-skillscan/actions/workflows/ci.yml)
@@ -11,7 +11,7 @@
 
 Agent skills are markdown files with embedded shell commands, network calls,
 and tool invocations. They run with **your credentials, on your machine,
-with your data**. Skillscan reads a skill as data — never executes it — and
+with your data**. Semia reads a skill as data — never executes it — and
 produces an evidence-backed report of every capability it may exercise.
 
 It is the difference between
@@ -20,7 +20,7 @@ It is the difference between
 
 and
 
-> *"I trust this skill because Skillscan extracted 14 actions, 6 effects,
+> *"I trust this skill because Semia extracted 14 actions, 6 effects,
 > and 2 secret reads — and every one is grounded in a specific source line."*
 
 ---
