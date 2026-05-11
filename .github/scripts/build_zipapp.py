@@ -14,7 +14,15 @@ tree always yields the same archive bytes:
   * mtime: fixed (FIXED_DATE_TIME)
   * permissions: 0o644 for every entry
   * create_system: 3 (Unix), independent of host OS
-  * compression: ZIP_DEFLATED at a pinned level
+  * compression: ZIP_STORED (no compression)
+
+We deliberately do NOT use ZIP_DEFLATED. The zlib deflate stream is not
+byte-stable across platforms — Linux, macOS, and Windows runners ship
+different zlib versions whose encoders may emit different bit sequences
+for the same input even at a pinned compresslevel. The ZIP spec only
+guarantees inflate output, not deflate output. ZIP_STORED is bit-for-bit
+identical everywhere, which is what the CI drift check needs. The size
+cost is ~3x per entry; the bundles are small enough that this is fine.
 
 The output is a valid zipapp — same shebang prefix + ZIP layout the cpython
 ``zipapp`` module produces.
@@ -34,7 +42,6 @@ from pathlib import Path
 FIXED_DATE_TIME = (2000, 1, 1, 0, 0, 0)
 FIXED_PERMISSIONS = 0o644
 ZIP_CREATE_SYSTEM_UNIX = 3
-COMPRESS_LEVEL = 6  # zlib default; pinned for byte stability.
 
 
 # Matches cpython's zipapp main template verbatim so the synthetic
@@ -87,17 +94,12 @@ def write_zipapp(
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("wb") as fh:
         fh.write(f"#!{shebang}\n".encode())
-        with zipfile.ZipFile(
-            fh,
-            "w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=COMPRESS_LEVEL,
-        ) as zf:
+        with zipfile.ZipFile(fh, "w", compression=zipfile.ZIP_STORED) as zf:
             for arcname, data in entries:
                 info = zipfile.ZipInfo(arcname, date_time=FIXED_DATE_TIME)
                 info.create_system = ZIP_CREATE_SYSTEM_UNIX
                 info.external_attr = (FIXED_PERMISSIONS & 0xFFFF) << 16
-                info.compress_type = zipfile.ZIP_DEFLATED
+                info.compress_type = zipfile.ZIP_STORED
                 zf.writestr(info, data)
 
     os.chmod(out, 0o755)
