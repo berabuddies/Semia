@@ -21,17 +21,27 @@ prepare -> synthesize -> validate/align -> repair -> detect -> report
 ```
 
 Outside an agent host, `semia scan` still runs end to end by calling a
-configured LLM provider for synthesize. The default provider is `openai`, the
-default model is `gpt-5.5`, and authentication comes from `OPENAI_API_KEY`.
-Use `--provider anthropic`, `--provider codex`, `--provider claude`, or
-`--model <name>` to override.
-Use `--prepare-only` to stop after deterministic preparation.
+configured LLM provider for synthesize. The default provider is `responses`
+(OpenAI Responses API; `openai` is accepted as an alias), the default model is
+`gpt-5.5`, and authentication comes from `OPENAI_API_KEY`. Use
+`--provider anthropic`, `--provider codex`, `--provider claude`,
+`--model <name>`, or `--base-url <url>` to override. Use `--prepare-only` to
+stop after deterministic preparation.
 
-The OpenAI provider streams Responses API deltas into `synthesized_facts.dl`.
-The Anthropic provider uses the Python Anthropic SDK when installed. The
-Claude provider shells out to Claude Code and inherits Claude Code environment
-variables such as `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
-`ANTHROPIC_BASE_URL`, and `ANTHROPIC_MODEL`.
+Four providers ship:
+
+- `responses` — OpenAI Responses API over raw HTTP. Default base URL
+  `https://api.openai.com/v1`; override with `--base-url` or
+  `OPENAI_BASE_URL` (works against DeepSeek, OpenRouter, vLLM, etc.).
+  Default model `gpt-5.5`.
+- `anthropic` — Anthropic Messages API over raw HTTP. Default base URL
+  `https://api.anthropic.com`; override with `--base-url` or
+  `ANTHROPIC_BASE_URL`. Default model `claude-opus-4-7`.
+- `codex` — shells out to `codex exec`. Inherits Codex CLI config. Only
+  `--model` is honored; `--base-url` is ignored with a warning.
+- `claude` — shells out to `claude --print`. Inherits Claude Code env
+  (`ANTHROPIC_*`). Default model `claude-opus-4-7`; only `--model` is
+  honored.
 
 Synthesize is a reviewer loop, not a single blind completion. It retries
 invalid candidates with checker feedback, saves every provider response and

@@ -1,0 +1,11 @@
+{
+  "owner": "wolffan",
+  "slug": "security-check-skill",
+  "displayName": "Security Check",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1769780893858,
+    "commit": "https://github.com/clawdbot/skills/commit/129ab81efbab0f6f6707c309bae1dcd897703390"
+  },
+  "history": []
+}

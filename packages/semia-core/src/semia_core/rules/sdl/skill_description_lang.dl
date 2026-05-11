@@ -1,10 +1,22 @@
-// SDL core schema. Evidence predicates are intentionally absent from the
-// detector-facing schema; plugins/core align evidence as a sidecar.
+// SDL V2 schema.
+//
+// Two layers:
+//   - Core facts: detector-facing, evidence-free. The Stage 3 Datalog rules
+//     consume only these.
+//   - Evidence sidecar: typed `_evidence_text` (raw LLM output) and `_evidence`
+//     (normalized after alignment) plus the `evidence_unit` universe. These
+//     are declared here so secondary tooling (audit renderers, scoring tools,
+//     post-finding evidence joins) can run Soufflé queries against the
+//     normalized program without redeclaring the schema.
 
 .type Skill <: symbol
 .type Action <: symbol
 .type Call <: symbol
 .type Value <: symbol
+
+// =============================================================================
+// Core facts
+// =============================================================================
 
 .decl skill(s: Skill)
 .decl skill_doc_claim(s: Skill, claim: symbol)
@@ -31,3 +43,73 @@
 .decl value(v: Value, a: Action, kind: symbol)
 .decl value_sensitive_allowed_action(v: Value, a: Action)
 .decl value_secret_allowed_action(v: Value, a: Action)
+
+// =============================================================================
+// Evidence universe
+// =============================================================================
+
+.decl evidence_unit(ev: symbol, unit_id: number)
+.decl evidence_unit_type(ev: symbol, unit_type: symbol)
+.decl evidence_unit_location(ev: symbol, source_file: symbol, line_start: number, line_end: number)
+
+// =============================================================================
+// Raw evidence text (LLM output, before alignment)
+// =============================================================================
+
+// Entity-level: arguments mirror the entity key only.
+.decl skill_evidence_text(s: Skill, text: symbol)
+.decl action_evidence_text(a: Action, text: symbol)
+.decl call_evidence_text(c: Call, text: symbol)
+.decl value_evidence_text(v: Value, a: Action, text: symbol)
+
+// Annotation-level: arguments mirror the core fact, plus a trailing text span.
+.decl skill_doc_claim_evidence_text(s: Skill, claim: symbol, text: symbol)
+.decl action_trigger_evidence_text(a: Action, kind: symbol, text: symbol)
+.decl action_gate_evidence_text(a: Action, kind: symbol, text: symbol)
+.decl action_param_evidence_text(a: Action, name: symbol, v: Value, text: symbol)
+
+.decl call_effect_evidence_text(c: Call, kind: symbol, text: symbol)
+.decl call_code_evidence_text(c: Call, kind: symbol, text: symbol)
+.decl call_action_evidence_text(c: Call, a: Action, text: symbol)
+.decl call_action_arg_evidence_text(c: Call, v_arg: Value, v_param: Value, text: symbol)
+.decl call_unconditional_evidence_text(c1: Call, c2: Call, text: symbol)
+.decl call_conditional_evidence_text(c1: Call, c2: Call, v: Value, text: symbol)
+.decl call_region_evidence_text(c: Call, v: Value, text: symbol)
+.decl call_input_evidence_text(c: Call, v: Value, text: symbol)
+.decl call_output_evidence_text(c: Call, v: Value, text: symbol)
+.decl call_region_untrusted_evidence_text(c: Call, text: symbol)
+.decl call_region_sensitive_evidence_text(c: Call, text: symbol)
+.decl call_region_secret_evidence_text(c: Call, text: symbol)
+
+.decl value_sensitive_allowed_action_evidence_text(v: Value, a: Action, text: symbol)
+.decl value_secret_allowed_action_evidence_text(v: Value, a: Action, text: symbol)
+
+// =============================================================================
+// Normalized evidence (after alignment to evidence_unit handles)
+// =============================================================================
+
+.decl skill_evidence(s: Skill, ev: symbol)
+.decl action_evidence(a: Action, ev: symbol)
+.decl call_evidence(c: Call, ev: symbol)
+.decl value_evidence(v: Value, a: Action, ev: symbol)
+
+.decl skill_doc_claim_evidence(s: Skill, claim: symbol, ev: symbol)
+.decl action_trigger_evidence(a: Action, kind: symbol, ev: symbol)
+.decl action_gate_evidence(a: Action, kind: symbol, ev: symbol)
+.decl action_param_evidence(a: Action, name: symbol, v: Value, ev: symbol)
+
+.decl call_effect_evidence(c: Call, kind: symbol, ev: symbol)
+.decl call_code_evidence(c: Call, kind: symbol, ev: symbol)
+.decl call_action_evidence(c: Call, a: Action, ev: symbol)
+.decl call_action_arg_evidence(c: Call, v_arg: Value, v_param: Value, ev: symbol)
+.decl call_unconditional_evidence(c1: Call, c2: Call, ev: symbol)
+.decl call_conditional_evidence(c1: Call, c2: Call, v: Value, ev: symbol)
+.decl call_region_evidence(c: Call, v: Value, ev: symbol)
+.decl call_input_evidence(c: Call, v: Value, ev: symbol)
+.decl call_output_evidence(c: Call, v: Value, ev: symbol)
+.decl call_region_untrusted_evidence(c: Call, ev: symbol)
+.decl call_region_sensitive_evidence(c: Call, ev: symbol)
+.decl call_region_secret_evidence(c: Call, ev: symbol)
+
+.decl value_sensitive_allowed_action_evidence(v: Value, a: Action, ev: symbol)
+.decl value_secret_allowed_action_evidence(v: Value, a: Action, ev: symbol)

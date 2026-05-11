@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Structural checker for SDL core facts and evidence sidecars."""
 
 from __future__ import annotations
@@ -14,11 +16,8 @@ from .schema import (
     ALLOWED_GATES,
     ALLOWED_TRIGGERS,
     ALLOWED_VALUE_KINDS,
-    CORE_SCHEMA,
-    EVIDENCE_SCHEMA,
-    EVIDENCE_TEXT_SCHEMA,
-    EVIDENCE_UNIT_SCHEMA,
     KNOWN_FACT_SCHEMA,
+    MECHANICAL_FACT_RELATIONS,
 )
 
 
@@ -38,7 +37,9 @@ def check_program(
     """Run the small SDL structural checker."""
 
     opts = options or CheckOptions()
-    program = parse_facts(source_or_program) if isinstance(source_or_program, str) else source_or_program
+    program = (
+        parse_facts(source_or_program) if isinstance(source_or_program, str) else source_or_program
+    )
     issues: list[CheckIssue] = []
     facts_by_rel = _index(program.core_facts)
     all_by_rel = _index(program.all_facts)
@@ -53,7 +54,9 @@ def check_program(
     _check_value_definitions(facts_by_rel, issues)
     _check_policy_consistency(facts_by_rel, issues)
     _check_annotation_consistency(facts_by_rel, issues)
-    support_coverage = _check_typed_evidence(program, all_by_rel, issues, required=opts.require_evidence)
+    support_coverage = _check_typed_evidence(
+        program, all_by_rel, issues, required=opts.require_evidence
+    )
 
     program_valid = not any(issue.severity == "error" for issue in issues)
     return CheckResult(
@@ -78,7 +81,9 @@ def _issue(
     fact: Fact | None = None,
     severity: str = "error",
 ) -> None:
-    issues.append(CheckIssue(code=code, message=message, line=fact.line if fact else 0, severity=severity))  # type: ignore[arg-type]
+    issues.append(
+        CheckIssue(code=code, message=message, line=fact.line if fact else 0, severity=severity)
+    )  # type: ignore[arg-type]
 
 
 def _check_parse_and_schema(program: FactProgram, issues: list[CheckIssue]) -> None:
@@ -126,14 +131,29 @@ def _check_references(by_rel: dict[str, list[Fact]], issues: list[CheckIssue]) -
 
     for fact in by_rel.get("action", []):
         if len(fact.args) >= 2 and fact.args[1] not in skills:
-            _issue(issues, "SDL010", f"action {fact.args[0]!r} references undeclared skill {fact.args[1]!r}", fact=fact)
+            _issue(
+                issues,
+                "SDL010",
+                f"action {fact.args[0]!r} references undeclared skill {fact.args[1]!r}",
+                fact=fact,
+            )
     for relation in ("action_trigger", "action_gate", "action_param"):
         for fact in by_rel.get(relation, []):
             if fact.args and fact.args[0] not in actions:
-                _issue(issues, "SDL011", f"{relation} references undeclared action {fact.args[0]!r}", fact=fact)
+                _issue(
+                    issues,
+                    "SDL011",
+                    f"{relation} references undeclared action {fact.args[0]!r}",
+                    fact=fact,
+                )
     for fact in by_rel.get("call", []):
         if len(fact.args) >= 2 and fact.args[1] not in actions:
-            _issue(issues, "SDL012", f"call {fact.args[0]!r} references undeclared action {fact.args[1]!r}", fact=fact)
+            _issue(
+                issues,
+                "SDL012",
+                f"call {fact.args[0]!r} references undeclared action {fact.args[1]!r}",
+                fact=fact,
+            )
     for relation in (
         "call_effect",
         "call_code",
@@ -148,24 +168,54 @@ def _check_references(by_rel: dict[str, list[Fact]], issues: list[CheckIssue]) -
     ):
         for fact in by_rel.get(relation, []):
             if fact.args and fact.args[0] not in calls:
-                _issue(issues, "SDL013", f"{relation} references undeclared call {fact.args[0]!r}", fact=fact)
+                _issue(
+                    issues,
+                    "SDL013",
+                    f"{relation} references undeclared call {fact.args[0]!r}",
+                    fact=fact,
+                )
     for relation in ("call_unconditional", "call_conditional"):
         for fact in by_rel.get(relation, []):
             for cid in fact.args[:2]:
                 if cid not in calls:
-                    _issue(issues, "SDL014", f"{relation} references undeclared call {cid!r}", fact=fact)
+                    _issue(
+                        issues,
+                        "SDL014",
+                        f"{relation} references undeclared call {cid!r}",
+                        fact=fact,
+                    )
     for fact in by_rel.get("call_action", []):
         if len(fact.args) >= 2 and fact.args[1] not in actions:
-            _issue(issues, "SDL015", f"call_action references undeclared action {fact.args[1]!r}", fact=fact)
+            _issue(
+                issues,
+                "SDL015",
+                f"call_action references undeclared action {fact.args[1]!r}",
+                fact=fact,
+            )
     for fact in by_rel.get("value", []):
         if len(fact.args) >= 2 and fact.args[1] not in actions:
-            _issue(issues, "SDL016", f"value {fact.args[0]!r} references undeclared action {fact.args[1]!r}", fact=fact)
+            _issue(
+                issues,
+                "SDL016",
+                f"value {fact.args[0]!r} references undeclared action {fact.args[1]!r}",
+                fact=fact,
+            )
     for relation in ("value_sensitive_allowed_action", "value_secret_allowed_action"):
         for fact in by_rel.get(relation, []):
             if len(fact.args) >= 1 and fact.args[0] not in values:
-                _issue(issues, "SDL017", f"{relation} references undeclared value {fact.args[0]!r}", fact=fact)
+                _issue(
+                    issues,
+                    "SDL017",
+                    f"{relation} references undeclared value {fact.args[0]!r}",
+                    fact=fact,
+                )
             if len(fact.args) >= 2 and fact.args[1] not in actions:
-                _issue(issues, "SDL018", f"{relation} references undeclared action {fact.args[1]!r}", fact=fact)
+                _issue(
+                    issues,
+                    "SDL018",
+                    f"{relation} references undeclared action {fact.args[1]!r}",
+                    fact=fact,
+                )
 
 
 def _check_enums(by_rel: dict[str, list[Fact]], issues: list[CheckIssue]) -> None:
@@ -217,8 +267,17 @@ def _check_call_graph_connectivity(by_rel: dict[str, list[Fact]], issues: list[C
                 before, after = fact.args[0], fact.args[1]
                 edges[before].add(after)
                 incoming[after].add(before)
-                if before in call_to_action and after in call_to_action and call_to_action[before] != call_to_action[after]:
-                    _issue(issues, "SDL031", f"{relation} crosses action boundary from {before!r} to {after!r}", fact=fact)
+                if (
+                    before in call_to_action
+                    and after in call_to_action
+                    and call_to_action[before] != call_to_action[after]
+                ):
+                    _issue(
+                        issues,
+                        "SDL031",
+                        f"{relation} crosses action boundary from {before!r} to {after!r}",
+                        fact=fact,
+                    )
 
     for action, calls in action_calls.items():
         if len(calls) <= 1:
@@ -238,15 +297,17 @@ def _check_call_graph_connectivity(by_rel: dict[str, list[Fact]], issues: list[C
                 queue.append(nxt)
         missing = calls - visited
         if missing:
-            _issue(issues, "SDL033", f"action {action!r} has unreachable calls: {', '.join(sorted(missing))}")
+            _issue(
+                issues,
+                "SDL033",
+                f"action {action!r} has unreachable calls: {', '.join(sorted(missing))}",
+            )
 
 
 def _check_value_definitions(by_rel: dict[str, list[Fact]], issues: list[CheckIssue]) -> None:
     values = _declared_values(by_rel)
     explicit_sources = {
-        fact.args[2]
-        for fact in by_rel.get("action_param", [])
-        if len(fact.args) >= 3
+        fact.args[2] for fact in by_rel.get("action_param", []) if len(fact.args) >= 3
     }
     allowed = values | explicit_sources
     for relation, indexes in {
@@ -259,22 +320,31 @@ def _check_value_definitions(by_rel: dict[str, list[Fact]], issues: list[CheckIs
         for fact in by_rel.get(relation, []):
             for idx in indexes:
                 if len(fact.args) > idx and fact.args[idx] not in allowed:
-                    _issue(issues, "SDL040", f"{relation} references undeclared value {fact.args[idx]!r}", fact=fact)
+                    _issue(
+                        issues,
+                        "SDL040",
+                        f"{relation} references undeclared value {fact.args[idx]!r}",
+                        fact=fact,
+                    )
 
 
 def _check_policy_consistency(by_rel: dict[str, list[Fact]], issues: list[CheckIssue]) -> None:
     value_kinds = {
-        fact.args[0]: fact.args[2]
-        for fact in by_rel.get("value", [])
-        if len(fact.args) >= 3
+        fact.args[0]: fact.args[2] for fact in by_rel.get("value", []) if len(fact.args) >= 3
     }
     secret_allowed = _ids(by_rel, "value_secret_allowed_action")
     sensitive_allowed = _ids(by_rel, "value_sensitive_allowed_action")
     for value_id, kind in value_kinds.items():
         if kind == "secret" and value_id not in secret_allowed:
-            _issue(issues, "SDL050", f"secret value {value_id!r} has no value_secret_allowed_action")
+            _issue(
+                issues, "SDL050", f"secret value {value_id!r} has no value_secret_allowed_action"
+            )
         if kind == "sensitive_local" and value_id not in sensitive_allowed:
-            _issue(issues, "SDL051", f"sensitive value {value_id!r} has no value_sensitive_allowed_action")
+            _issue(
+                issues,
+                "SDL051",
+                f"sensitive value {value_id!r} has no value_sensitive_allowed_action",
+            )
 
 
 def _check_annotation_consistency(by_rel: dict[str, list[Fact]], issues: list[CheckIssue]) -> None:
@@ -282,7 +352,9 @@ def _check_annotation_consistency(by_rel: dict[str, list[Fact]], issues: list[Ch
     sensitive = _ids(by_rel, "call_region_sensitive")
     secret = _ids(by_rel, "call_region_secret")
     for cid in sorted(untrusted & sensitive):
-        _issue(issues, "SDL060", f"call {cid!r} has both untrusted and sensitive region annotations")
+        _issue(
+            issues, "SDL060", f"call {cid!r} has both untrusted and sensitive region annotations"
+        )
     for cid in sorted(untrusted & secret):
         _issue(issues, "SDL061", f"call {cid!r} has both untrusted and secret region annotations")
 
@@ -297,22 +369,51 @@ def _check_typed_evidence(
     evidence_units = _ids(all_by_rel, "evidence_unit")
     core_keys = {_support_key_for_core(fact) for fact in program.core_facts}
     for fact in program.evidence_facts:
-        if fact.args and fact.args[-1].startswith("su_") and evidence_units and fact.args[-1] not in evidence_units:
-            _issue(issues, "EVD010", f"{fact.relation} references unknown evidence handle {fact.args[-1]!r}", fact=fact, severity="warning")
+        if (
+            fact.args
+            and fact.args[-1].startswith("su_")
+            and evidence_units
+            and fact.args[-1] not in evidence_units
+        ):
+            _issue(
+                issues,
+                "EVD010",
+                f"{fact.relation} references unknown evidence handle {fact.args[-1]!r}",
+                fact=fact,
+                severity="warning",
+            )
 
-    supported = 0
-    required_facts = 0
     evidence_keys = _evidence_target_keys(program)
     for fact in program.evidence_text_facts + program.evidence_facts:
         if _support_key_for_evidence(fact) not in core_keys:
-            _issue(issues, "EVD011", f"{fact.relation} does not target an existing core fact", fact=fact, severity="warning")
+            _issue(
+                issues,
+                "EVD011",
+                f"{fact.relation} does not target an existing core fact",
+                fact=fact,
+                severity="warning",
+            )
 
     for fact in program.core_facts:
-        required_facts += 1
         if _support_key_for_core(fact) in evidence_keys:
-            supported += 1
-        elif required:
-            _issue(issues, "EVD012", f"core fact lacks typed evidence: {fact.render()}", fact=fact, severity="warning")
+            continue
+        if required and fact.relation not in MECHANICAL_FACT_RELATIONS:
+            _issue(
+                issues,
+                "EVD012",
+                f"core fact lacks typed evidence: {fact.render()}",
+                fact=fact,
+                severity="warning",
+            )
+
+    required_facts = sum(
+        1 for f in program.core_facts if f.relation not in MECHANICAL_FACT_RELATIONS
+    )
+    supported = sum(
+        1
+        for f in program.core_facts
+        if f.relation not in MECHANICAL_FACT_RELATIONS and _support_key_for_core(f) in evidence_keys
+    )
 
     return supported / required_facts if required_facts else 1.0
 
@@ -343,3 +444,64 @@ def _support_key_for_evidence(fact: Fact) -> tuple[str, tuple[str, ...]]:
 
 def _declared_values(by_rel: dict[str, list[Fact]]) -> set[str]:
     return {fact.args[0] for fact in by_rel.get("value", []) if fact.args}
+
+
+def compute_ssa_input_availability(program: FactProgram) -> float:
+    """Fraction of call_input variables sourced from declared values,
+    action_param, or an earlier call_output in the same action chain.
+
+    1.0 means every input has a source; lower scores hint at LLM-hallucinated
+    variables. Mechanical lint, not a structural error.
+    """
+
+    by_rel = _index(program.core_facts)
+    action_calls: dict[str, set[str]] = defaultdict(set)
+    call_to_action: dict[str, str] = {}
+    for f in by_rel.get("call", []):
+        if len(f.args) >= 2:
+            action_calls[f.args[1]].add(f.args[0])
+            call_to_action[f.args[0]] = f.args[1]
+    call_outputs: dict[str, set[str]] = defaultdict(set)
+    for f in by_rel.get("call_output", []):
+        if len(f.args) >= 2:
+            call_outputs[f.args[0]].add(f.args[1])
+    action_params: dict[str, set[str]] = defaultdict(set)
+    for f in by_rel.get("action_param", []):
+        if len(f.args) >= 3:
+            action_params[f.args[0]].add(f.args[2])
+    values_by_action: dict[str, set[str]] = defaultdict(set)
+    for f in by_rel.get("value", []):
+        if len(f.args) >= 2:
+            values_by_action[f.args[1]].add(f.args[0])
+    backward: dict[str, set[str]] = defaultdict(set)
+    for rel in ("call_unconditional", "call_conditional"):
+        for f in by_rel.get(rel, []):
+            if len(f.args) >= 2:
+                backward[f.args[1]].add(f.args[0])
+
+    total = 0
+    available = 0
+    for f in by_rel.get("call_input", []):
+        if len(f.args) < 2:
+            continue
+        total += 1
+        c, v = f.args[0], f.args[1]
+        a = call_to_action.get(c)
+        if v in action_params.get(a, set()) or v in values_by_action.get(a, set()):
+            available += 1
+            continue
+        seen: set[str] = set()
+        queue = list(backward.get(c, set()))
+        found = False
+        while queue:
+            x = queue.pop()
+            if x in seen:
+                continue
+            seen.add(x)
+            if v in call_outputs.get(x, set()):
+                found = True
+                break
+            queue.extend(backward.get(x, set()))
+        if found:
+            available += 1
+    return available / total if total else 1.0

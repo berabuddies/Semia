@@ -1,0 +1,47 @@
+{
+  "owner": "autogame-17",
+  "slug": "feishu-post",
+  "displayName": "Feishu Post",
+  "latest": {
+    "version": "1.1.7",
+    "publishedAt": 1771169184529,
+    "commit": "https://github.com/openclaw/skills/commit/a76b8379c007c64b570e0efe1824670b16fe0ed7"
+  },
+  "history": [
+    {
+      "version": "1.1.8",
+      "publishedAt": 1770892448641,
+      "commit": "https://github.com/openclaw/skills/commit/873733598b2ddc95a9073f6401366d6fcf5f5f29"
+    },
+    {
+      "version": "1.1.7",
+      "publishedAt": 1770791738004,
+      "commit": "https://github.com/openclaw/skills/commit/521188884f1c2811fe04fbc9c6a424791cc72c07"
+    },
+    {
+      "version": "1.1.6",
+      "publishedAt": 1770561362383,
+      "commit": "https://github.com/openclaw/skills/commit/932f542955df3e7b2ec6f6fdd12dc34ec0e6c4de"
+    },
+    {
+      "version": "1.1.1",
+      "publishedAt": 1770317604707,
+      "commit": "https://github.com/clawdbot/skills/commit/3533896b1b5b812128e92d2e72abcb65a4693a35"
+    },
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770174121816,
+      "commit": "https://github.com/clawdbot/skills/commit/183ce94b1c89303788e1172783735c284b9a7ea3"
+    },
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770152109032,
+      "commit": "https://github.com/clawdbot/skills/commit/56be45aefdff643df4b6051d06b5bcd22d8cc5d3"
+    },
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770024183976,
+      "commit": "https://github.com/clawdbot/skills/commit/1a0b14784440247f869220068462bdf3fd488189"
+    }
+  ]
+}

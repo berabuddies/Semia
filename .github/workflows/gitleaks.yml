@@ -1,0 +1,41 @@
+name: Gitleaks
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC — catch keys leaked between PRs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitleaks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan for secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # Full history so the scan covers older commits too,
+          # not just the latest diff.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          # Project-specific config (extends the default ruleset).
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # Comment on the PR with findings + show summary in the run.
+          GITLEAKS_ENABLE_COMMENTS: "true"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+          # NOTE: GITLEAKS_LICENSE is only required for private/org repos.
+          # The action is free for public OSS repositories.
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

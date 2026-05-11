@@ -1,0 +1,11 @@
+{
+  "owner": "shay0j",
+  "slug": "security-check",
+  "displayName": "Security Check",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770236744303,
+    "commit": "https://github.com/clawdbot/skills/commit/471e200c62ab0d364e40d4000a36239609521332"
+  },
+  "history": []
+}

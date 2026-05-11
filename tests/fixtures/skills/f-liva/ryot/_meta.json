@@ -1,0 +1,22 @@
+{
+  "owner": "f-liva",
+  "slug": "ryot",
+  "displayName": "Ryot",
+  "latest": {
+    "version": "1.2.0",
+    "publishedAt": 1771876805048,
+    "commit": "https://github.com/openclaw/skills/commit/6b1d9cf7dbc835e5bdac7c5dddd1fc4f847cc9ce"
+  },
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1771780947976,
+      "commit": "https://github.com/openclaw/skills/commit/152c4191e4953eefffa368fca84c2d578355d9c2"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771581490851,
+      "commit": "https://github.com/openclaw/skills/commit/1050df828bb1c3e3eabee58b0f13cd34dc07d084"
+    }
+  ]
+}

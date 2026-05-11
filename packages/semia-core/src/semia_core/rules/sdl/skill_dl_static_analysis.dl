@@ -39,6 +39,17 @@ data_flows(v1, v2) :-
   call_action(c, a),
   action_output_value(a, v1),
   call_output(c, v2).
+// LLM-mediated cross-action context flow (over-approximation): one action's
+// output may be routed into another action's input parameter by the
+// orchestrator. Migrated from legacy stage3 — recovers v_confused_deputy
+// coverage now that the only structural cross-action edge is the explicit
+// call_action / call_action_arg pair.
+data_flows(v1, v2) :-
+  action(a1, s),
+  action(a2, s),
+  a1 != a2,
+  action_output_value(a1, v1),
+  action_param(a2, _, v2).
 data_flows(v1, v3) :- data_flows(v1, v2), data_flows(v2, v3).
 
 .decl value_reaches(v1: Value, v2: Value)
@@ -46,19 +57,53 @@ value_reaches(v, v) :- value(v, _, _).
 value_reaches(v, v) :- action_param(_, _, v).
 value_reaches(v1, v2) :- data_flows(v1, v2).
 
+// A call is "in an untrusted region" when explicitly marked OR when any of its
+// inputs reaches from an untrusted source. The derived form complements the
+// explicit marker so LLM-emitted facts do not have to propagate taint manually
+// through every chain of call_input/call_output.
+.decl call_in_untrusted_region(c: Call)
+call_in_untrusted_region(c) :- call_region_untrusted(c).
+call_in_untrusted_region(c) :-
+  call_input(c, sink),
+  value_reaches(src, sink),
+  value_untrusted_source(src).
+
 .decl high_priv_call(c: Call)
 high_priv_call(c) :- call_effect(c, "proc_exec").
 high_priv_call(c) :- call_effect(c, "code_eval").
 high_priv_call(c) :- call_effect(c, "chain_write").
 high_priv_call(c) :- call_effect(c, "crypto_sign").
-high_priv_call(c) :- call_effect(c, "net_write"), call_region_untrusted(c).
+high_priv_call(c) :- call_effect(c, "net_write"), call_in_untrusted_region(c).
 
 .decl gated_action(a: Action)
 gated_action(a) :- action_gate(a, _).
 
+// Strong gate — a gate the user actively has to clear before the action runs.
+// Used to suppress findings where the operator has explicitly assumed the risk.
+// confirmation_prompt / allowlist / budget_limit / credential_bound are passive
+// or scope-narrowing, so they don't qualify as "strong".
+.decl gate_strong(a: Action)
+gate_strong(a) :- action_gate(a, "human_approval").
+
+// Intra-action unconditional reachability — a call is unconditionally reached
+// from a root_call via a chain of call_unconditional edges only. Useful for
+// severity tiering downstream (unconditional dropper > conditional dropper).
+.decl unconditional_reach(c: Call)
+.output unconditional_reach
+unconditional_reach(c) :- root_call(c).
+unconditional_reach(c) :- unconditional_reach(p), call_unconditional(p, c).
+
+// Intra-action reachability — a call is reachable from a root_call via any
+// edge (conditional or unconditional). Used to identify dead-drop payloads
+// whose obfuscated body is not exposed through any declared entry point.
+.decl reachable_call(c: Call)
+.output reachable_call
+reachable_call(c) :- root_call(c).
+reachable_call(c) :- reachable_call(p), edge(p, c).
+
 .decl untrusted_egress_call(c: Call)
-untrusted_egress_call(c) :- call_effect(c, "net_write"), call_region_untrusted(c).
-untrusted_egress_call(c) :- call_effect(c, "agent_call"), call_region_untrusted(c).
+untrusted_egress_call(c) :- call_effect(c, "net_write"), call_in_untrusted_region(c).
+untrusted_egress_call(c) :- call_effect(c, "agent_call"), call_in_untrusted_region(c).
 
 .decl value_untrusted_source(v: Value)
 value_untrusted_source(v) :- value(v, _, "param").
@@ -126,12 +171,12 @@ label_dangerous_execution_primitives(s, a, c) :-
   action(a, s),
   call(c, a),
   call_effect(c, "proc_exec"),
-  call_region_untrusted(c).
+  call_in_untrusted_region(c).
 label_dangerous_execution_primitives(s, a, c) :-
   action(a, s),
   call(c, a),
   call_effect(c, "code_eval"),
-  call_region_untrusted(c).
+  call_in_untrusted_region(c).
 label_dangerous_execution_primitives(s, a, c) :-
   action(a, s),
   call(c, a),
@@ -204,30 +249,45 @@ label_unverifiable_dependency_source(s, a, exec_c, src_c) :-
 
 .decl label_unsanitized_context_ingestion(s: Skill, a: Action, c: Call, src: Value)
 .output label_unsanitized_context_ingestion
+// Denials (migrated from stage3 v_indirect_injection):
+//   - strong gate (human_approval): the operator has explicitly approved the
+//     high-priv call after seeing inputs, so an indirect-injection finding
+//     would be noise.
+//   - literal sink: the data_flows over-approximation can route taint to a
+//     fixed-value input position. A literal call_input cannot actually receive
+//     attacker-controlled data at runtime, so suppress.
 label_unsanitized_context_ingestion(s, a, c, src) :-
   action(a, s),
   call(c, a),
   high_priv_call(c),
   call_input(c, sink),
   value_reaches(src, sink),
-  value_untrusted_source(src).
+  value_untrusted_source(src),
+  !gate_strong(a),
+  !value(sink, _, "literal").
 
 .decl label_implicit_egress_channels(s: Skill, a: Action, c: Call, kind: symbol, src: Value)
 .output label_implicit_egress_channels
+// Denial (migrated from stage3 v_secret_leak): suppress when the egress is
+// strongly gated. allowlist gating is intentionally NOT suppressed here — an
+// allowlist restricts destinations but doesn't itself prove the operator
+// reviewed the payload.
 label_implicit_egress_channels(s, a, c, "secret", src) :-
   action(a, s),
   call(c, a),
   untrusted_egress_call(c),
   call_input(c, sink),
   value_reaches(src, sink),
-  value_secret_source(src).
+  value_secret_source(src),
+  !gate_strong(a).
 label_implicit_egress_channels(s, a, c, "sensitive_local", src) :-
   action(a, s),
   call(c, a),
   untrusted_egress_call(c),
   call_input(c, sink),
   value_reaches(src, sink),
-  value_sensitive_source(src).
+  value_sensitive_source(src),
+  !gate_strong(a).
 
 .decl label_sensitive_local_resource_overreach(s: Skill, a: Action, c: Call, kind: symbol, src: Value)
 .output label_sensitive_local_resource_overreach
@@ -259,6 +319,35 @@ label_sensitive_local_resource_overreach(s, a, c, "sensitive_local", src) :-
   value_reaches(src, sink),
   value_sensitive_source(src),
   !value_sensitive_allowed_action(src, a).
+// Co-ingress (migrated from stage3 v_secret_taint_mix): secret/sensitive value
+// and an untrusted value enter the same call together, on distinct inputs.
+// Captures the "API key + adversary-controlled query on the same outbound
+// request" shape that the egress-only rules above miss when egress isn't
+// explicitly marked untrusted. Strong-gated actions are suppressed.
+label_sensitive_local_resource_overreach(s, a, c, "secret", secret_src) :-
+  action(a, s),
+  call(c, a),
+  call_input(c, secret_sink),
+  value_reaches(secret_src, secret_sink),
+  value_secret_source(secret_src),
+  call_input(c, untrusted_sink),
+  value_reaches(untrusted_src, untrusted_sink),
+  value_untrusted_source(untrusted_src),
+  secret_sink != untrusted_sink,
+  secret_src != untrusted_src,
+  !gate_strong(a).
+label_sensitive_local_resource_overreach(s, a, c, "sensitive_local", sens_src) :-
+  action(a, s),
+  call(c, a),
+  call_input(c, sens_sink),
+  value_reaches(sens_src, sens_sink),
+  value_sensitive_source(sens_src),
+  call_input(c, untrusted_sink),
+  value_reaches(untrusted_src, untrusted_sink),
+  value_untrusted_source(untrusted_src),
+  sens_sink != untrusted_sink,
+  sens_src != untrusted_src,
+  !gate_strong(a).
 
 .decl label_ungated_irreversible_operation(s: Skill, a: Action, c: Call)
 .output label_ungated_irreversible_operation
@@ -280,16 +369,25 @@ label_hardcoded_c2_communication(s, a, c, target) :-
 
 .decl label_shadow_credentials(s: Skill, a: Action, c: Call, kind: symbol)
 .output label_shadow_credentials
+// Migrated from stage3 m_credential_harvest: a credential/sensitive read is
+// only "harvesting" if the skill also has an untrusted egress path it could
+// ship the material out through. Without that, sensitive reads are config
+// loads, not theft. fs_list is included because directory enumeration over
+// ~/.ssh / ~/.aws is itself a recon primitive.
 label_shadow_credentials(s, a, c, "secret") :-
   action(a, s),
   call(c, a),
-  (call_effect(c, "fs_read"); call_effect(c, "env_read"); call_effect(c, "db_read")),
-  call_region_secret(c).
+  (call_effect(c, "fs_read"); call_effect(c, "fs_list");
+   call_effect(c, "env_read"); call_effect(c, "db_read")),
+  call_region_secret(c),
+  skill_has_untrusted_egress(s).
 label_shadow_credentials(s, a, c, "sensitive_local") :-
   action(a, s),
   call(c, a),
-  (call_effect(c, "fs_read"); call_effect(c, "env_read"); call_effect(c, "db_read")),
-  call_region_sensitive(c).
+  (call_effect(c, "fs_read"); call_effect(c, "fs_list");
+   call_effect(c, "env_read"); call_effect(c, "db_read")),
+  call_region_sensitive(c),
+  skill_has_untrusted_egress(s).
 
 .decl label_obfuscation(s: Skill, a: Action, c: Call, code: symbol)
 .output label_obfuscation
@@ -318,3 +416,18 @@ label_dormant_malicious_payload(s, a, c, "encoded_binary") :-
   action(a, s),
   call(c, a),
   call_code(c, "encoded_binary").
+// Dead-drop variants (migrated from stage3 m_dead_payload): obfuscated or
+// encoded code that is not reachable from any declared entry point of the
+// action. Reachable obfuscated code is already covered above; the !reachable
+// variant is structurally more suspicious — it's payload that hides from
+// declared call graphs and waits to be wired up another way.
+label_dormant_malicious_payload(s, a, c, "dead_obfuscated") :-
+  action(a, s),
+  call(c, a),
+  call_code(c, "obfuscated"),
+  !reachable_call(c).
+label_dormant_malicious_payload(s, a, c, "dead_encoded_binary") :-
+  action(a, s),
+  call(c, a),
+  call_code(c, "encoded_binary"),
+  !reachable_call(c).

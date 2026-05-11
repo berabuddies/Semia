@@ -1,0 +1,20 @@
+{
+  "name": "finance-watcher",
+  "version": "1.0.0",
+  "description": "Stock and crypto price monitoring with alerts and daily reports",
+  "main": "bin/finance-watcher.js",
+  "bin": {
+    "finance-watcher": "./bin/finance-watcher.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["stock", "crypto", "finance", "price", "alert", "monitoring"],
+  "author": "Claw",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2"
+  }
+}

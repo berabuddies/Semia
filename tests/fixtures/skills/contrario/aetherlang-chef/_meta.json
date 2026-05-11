@@ -1,0 +1,11 @@
+{
+  "owner": "contrario",
+  "slug": "aetherlang-chef",
+  "displayName": "AetherLang Chef V3",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1771376544242,
+    "commit": "https://github.com/openclaw/skills/commit/25cccbc84cb310b34b2a9a99eb1e4b6deddf3811"
+  },
+  "history": []
+}

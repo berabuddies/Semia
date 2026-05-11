@@ -1,0 +1,251 @@
+name: Release
+
+# Release workflow.
+#
+# - Tag `v*` push : runs validation, builds artifacts, attests build
+#                   provenance, publishes to PyPI, then publishes the
+#                   OpenClaw skill to ClawHub.
+# - workflow_dispatch : runs validation + build + attestation only (no
+#                       publish). Useful as a pre-flight check before tagging.
+#
+# Prerequisites — configure once per repository:
+#
+# 1. PyPI side:
+#    - Project page → Publishing → Add a new pending publisher with
+#      Owner: RiemaLabs, Repository: semia-skillscan,
+#      Workflow filename: release.yml, Environment: pypi.
+#
+# 2. GitHub side (PyPI environment):
+#    - Settings → Environments → New environment "pypi". Optionally restrict
+#      deployments to tags matching `v*` and require a reviewer.
+#
+# 3. GitHub side (ClawHub environment):
+#    - Settings → Environments → New environment "clawhub" (same protection
+#      rules recommended). Add `CLAWHUB_TOKEN` as an environment secret.
+#    - The ClawHub publish step will fail on the first release if this
+#      environment or secret is missing.
+#
+# 4. Supply-chain signals produced by this workflow (see docs/supply-chain.md):
+#    - SLSA build provenance attestations via actions/attest-build-provenance
+#      (visible under the GitHub "Attestations" tab and verifiable with
+#      `gh attestation verify`).
+#    - PEP 740 attestations on PyPI (the publish action emits these when
+#      `attestations: true` is set, which it is here).
+#    - CycloneDX SBOM uploaded as a release artifact.
+#
+# OIDC (id-token: write) replaces long-lived API tokens for PyPI — no PyPI
+# secret to rotate. ClawHub still uses a token because their CLI does not
+# yet accept OIDC.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-check:
+    name: Validate, build, and attest
+    runs-on: ubuntu-latest
+
+    # `id-token: write` and `attestations: write` are required so
+    # actions/attest-build-provenance can mint and store a SLSA provenance
+    # attestation for each built artifact.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # Full history so CHANGELOG.md can be read against the tagged
+          # ref accurately.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      - name: Install build tooling
+        run: uv pip install --system build twine
+
+      - name: Rebuild plugin zipapps and verify they match what is committed
+        # The sdist embeds packages/semia-plugins/*/bin/*.pyz; refuse to
+        # release if those committed bundles are stale relative to the
+        # current source tree.
+        run: |
+          make bundle-plugins
+          git diff --exit-code -- 'packages/semia-plugins/*/bin/*.pyz'
+
+      - name: Reassemble per-host SKILL.md files and verify they match what is committed
+        run: |
+          make assemble-plugin-skills
+          git diff --exit-code -- 'packages/semia-plugins/*/skills/*/SKILL.md'
+
+      - name: Extract version from tag
+        id: ver
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Assert CHANGELOG.md contains an entry for the tag
+        # Only enforce on real releases. workflow_dispatch dry runs can
+        # exercise the rest of the pipeline without forcing changelog churn.
+        if: steps.ver.outputs.version != ''
+        run: python .github/scripts/check_changelog.py --version "${{ steps.ver.outputs.version }}"
+
+      - name: Assert pyproject.toml version matches tag
+        if: steps.ver.outputs.version != ''
+        env:
+          TAG_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          PYPROJECT_VERSION=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::pyproject.toml version ($PYPROJECT_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+
+      - name: Run release check
+        run: make release-check
+
+      - name: Generate CycloneDX SBOM
+        # Records the source-tree SBOM as a workflow + release artifact.
+        # Even though the runtime dependency set is currently empty, the
+        # SBOM still pins the build_backend layout, license metadata, and
+        # plugin manifests for downstream auditors.
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/sbom.cdx.json
+          artifact-name: semia-skillscan-sbom.cdx.json
+
+      - name: Attest build provenance for wheel and sdist
+        # Mints a SLSA provenance attestation that links each built artifact
+        # to this exact workflow run. Verifiers can use
+        # `gh attestation verify <file> --repo RiemaLabs/semia-skillscan`.
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.whl
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python-package-distributions
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+          if-no-files-found: error
+
+      - name: Upload release-check artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: semia-skillscan-build-check
+          path: dist/build-check.json
+          if-no-files-found: error
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: semia-skillscan-sbom
+          path: dist/sbom.cdx.json
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: release-check
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/semia-skillscan
+
+    # `id-token: write` is required for PyPI Trusted Publishing (OIDC).
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: python-package-distributions
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          # Explicit even though it is the default since v1.11 — keeps
+          # PEP 740 attestations visible in the workflow definition.
+          attestations: true
+
+  publish-clawhub:
+    name: Publish OpenClaw skill to ClawHub
+    runs-on: ubuntu-latest
+    needs: publish-pypi
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    environment:
+      name: clawhub
+      url: https://clawhub.ai/skills/semia-skillscan
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      - name: Extract version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Assert SKILL.md version matches tag
+        env:
+          TAG_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          SKILL_VERSION=$(awk '/^version:/ {print $2; exit}' \
+            packages/semia-plugins/openclaw/skills/semia-skillscan/SKILL.md)
+          if [ "$SKILL_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::SKILL.md version ($SKILL_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+
+      - name: Install ClawHub CLI
+        run: npm i -g clawhub
+
+      - name: Authenticate
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+        run: clawhub login --token "$CLAWHUB_TOKEN"
+
+      - name: Publish skill
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          clawhub skill publish \
+            packages/semia-plugins/openclaw/skills/semia-skillscan \
+            --slug semia-skillscan \
+            --name "Semia Skillscan" \
+            --version "$VERSION" \
+            --changelog "Release $VERSION"

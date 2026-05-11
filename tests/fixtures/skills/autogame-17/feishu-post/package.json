@@ -1,0 +1,11 @@
+{
+  "name": "feishu-post",
+  "version": "1.1.6",
+  "description": "Send rich text messages (Post/RichText) to Feishu users/groups. Supports markdown conversion.",
+  "main": "send.js",
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.58.0",
+    "commander": "^14.0.3",
+    "dotenv": "^17.2.3"
+  }
+}

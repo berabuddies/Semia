@@ -9,13 +9,13 @@ version = "0.1.0"
 description = "Skill Behavior Mapping for AI agent skill auditing."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "RiemaLabs" }]
 keywords = ["agent-skills", "static-analysis", "security", "souffle"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -24,9 +24,6 @@ classifiers = [
 ]
 dependencies = []
 
-[project.optional-dependencies]
-anthropic = ["anthropic>=0.40"]
-
 [project.scripts]
 semia = "semia_cli.main:main"
 
@@ -34,11 +31,57 @@ semia = "semia_cli.main:main"
 Homepage = "https://github.com/RiemaLabs/semia-skillscan"
 Issues = "https://github.com/RiemaLabs/semia-skillscan/issues"
 
-[tool.setuptools.packages.find]
-where = [
-    "packages/semia-core/src",
-    "packages/semia-cli/src",
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    ".cache",
+    ".venv",
+    "build",
+    "dist",
+    ".semia",
+    "output",
+    # External skill fixtures used as untrusted test input: not project source.
+    "tests/fixtures",
 ]
 
-[tool.setuptools.package-data]
-semia_core = ["rules/sdl/*.dl"]
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long — formatter handles wrapping
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+# Type check baseline. Permissive on purpose so existing code lands as a
+# baseline and the CI step that runs `make types` is non-blocking initially.
+# Tighten incrementally (e.g. flip `disallow_untyped_defs` to true) as type
+# coverage grows. Run locally with `make types`.
+python_version = "3.11"
+mypy_path = "packages/semia-core/src:packages/semia-cli/src"
+namespace_packages = true
+explicit_package_bases = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+strict_equality = true
+follow_imports = "silent"
+exclude = [
+    "^build/",
+    "^dist/",
+    "^\\.venv/",
+    "^\\.semia/",
+    "^output/",
+    "^tests/",
+]

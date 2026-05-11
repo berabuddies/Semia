@@ -1,0 +1,17 @@
+{
+  "owner": "thiagoruss0",
+  "slug": "n8nsk",
+  "displayName": "n8n",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1770655602590,
+    "commit": "https://github.com/openclaw/skills/commit/968d23226f66892d51c4b252cd7dea94b547d436"
+  },
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770405791857,
+      "commit": "https://github.com/openclaw/skills/commit/4159e7574a15c1ea35152abbaf9c749ced2ae6dc"
+    }
+  ]
+}

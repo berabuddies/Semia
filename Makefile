@@ -1,42 +1,139 @@
-.PHONY: help check compile test validate-plugin-manifests build release-check clean
+.PHONY: help test coverage compile validate-plugin-manifests check types \
+        build-check dist-build twine-check build \
+        bundle-plugins bundle-codex-plugin \
+        assemble-plugin-skills check-plugin-skills \
+        smoke-installed smoke-zipapps \
+        release-check clean
 
-UV ?= uv
 PYTHON ?= python3
 BUILD_DIR ?= dist
+PYTHONPATH := packages/semia-core/src:packages/semia-cli/src
+COVERAGE_SOURCES := packages/semia-core/src,packages/semia-cli/src
 
-COMPILE_DIRS = tests $(wildcard packages)
-TEST_DIRS = $(sort $(dir $(wildcard tests/test*.py) $(wildcard tests/*/test*.py) $(wildcard tests/*/*/test*.py)))
-RELEASE_REQUIRED = README.md LICENSE docs/release.md docs/supply-chain.md
+# `dist-build` and `twine-check` need the standard PyPA tooling (build, twine).
+# CI installs them via `uv pip install --system build twine`. Locally, run
+# `python -m pip install build twine` once before `make build`.
 
-help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-24s %s\n", $$1, $$2}'
+PLUGIN_HOSTS = codex claude-code
 
-# ── Quality Gates ────────────────────────────────────────────────────
+help:
+	@echo "Available targets:"
+	@echo "  test                      - run unit tests"
+	@echo "  coverage                  - run unit tests under coverage.py (writes coverage.xml)"
+	@echo "  compile                   - byte-compile sources"
+	@echo "  validate-plugin-manifests - check plugin manifests"
+	@echo "  types                     - run mypy over packages/ and build_backend/"
+	@echo "  check                     - compile + tests + manifest validation"
+	@echo "  build-check               - validate package metadata (writes $(BUILD_DIR)/build-check.json)"
+	@echo "  dist-build                - build wheel and sdist into $(BUILD_DIR)/"
+	@echo "  twine-check               - validate built artifacts with twine"
+	@echo "  build                     - build-check + dist-build + twine-check"
+	@echo "  bundle-plugins            - rebuild semia.pyz for every host in PLUGIN_HOSTS"
+	@echo "  bundle-plugin-<host>      - rebuild packages/semia-plugins/<host>/bin/semia.pyz"
+	@echo "  bundle-codex-plugin       - alias for bundle-plugin-codex"
+	@echo "  assemble-plugin-skills    - rebuild per-host SKILL.md from shared body + overlays"
+	@echo "  check-plugin-skills       - verify committed SKILL.md files match the assembled output"
+	@echo "  smoke-installed           - install the built wheel and run 'semia --help'"
+	@echo "  smoke-zipapps             - run 'python <host>/bin/semia.pyz --help' for each host"
+	@echo "  release-check             - check + build + verify required release files"
+	@echo "  clean                     - remove build artifacts"
 
-check: compile test validate-plugin-manifests ## Run all local checks
+test:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m unittest \
+	    tests.cli.test_semia_cli \
+	    tests.cli.test_semia_cli_integration \
+	    tests.cli.test_llm_adapter \
+	    tests.core.test_datalog_eval \
+	    tests.core.test_detector_report \
+	    tests.core.test_facts_checker_evidence \
+	    tests.core.test_pipeline \
+	    tests.core.test_prepare \
+	    tests.core.test_skill_corpus
 
-compile: ## Byte-compile Python sources with stdlib compileall
-	$(PYTHON) -m compileall -q $(COMPILE_DIRS)
+coverage:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m coverage run --source=$(COVERAGE_SOURCES) -m unittest \
+	    tests.cli.test_semia_cli \
+	    tests.cli.test_semia_cli_integration \
+	    tests.cli.test_llm_adapter \
+	    tests.core.test_datalog_eval \
+	    tests.core.test_detector_report \
+	    tests.core.test_facts_checker_evidence \
+	    tests.core.test_pipeline \
+	    tests.core.test_prepare \
+	    tests.core.test_skill_corpus
+	$(PYTHON) -m coverage xml -o coverage.xml
+	$(PYTHON) -m coverage report
 
-test: ## Run stdlib unittest discovery
-	@if [ -z "$(TEST_DIRS)" ]; then \
-		echo "No tests found."; \
-	else \
-		for dir in $(TEST_DIRS); do \
-			$(PYTHON) -m unittest discover -s $$dir || exit $$?; \
-		done; \
-	fi
+compile:
+	$(PYTHON) -m compileall -q packages/ build_backend/
 
-validate-plugin-manifests: ## Validate plugin manifests with a stdlib checker
+validate-plugin-manifests:
 	$(PYTHON) .github/scripts/validate_plugin_manifests.py
 
-# ── Packaging / Release ──────────────────────────────────────────────
+assemble-plugin-skills:
+	$(PYTHON) .github/scripts/assemble_plugin_skills.py
 
-build: ## Run package metadata and package-data checks
+check-plugin-skills:
+	$(PYTHON) .github/scripts/assemble_plugin_skills.py --check
+
+check: compile test validate-plugin-manifests check-plugin-skills
+
+# Run mypy in permissive mode (`ignore_missing_imports`, no `disallow_untyped_defs`
+# yet). The CI step that calls this target is `continue-on-error: true` for now
+# so existing code lands as a baseline; tighten the config as type coverage grows.
+types:
+	$(PYTHON) -m mypy --config-file pyproject.toml \
+	    packages/semia-core/src \
+	    packages/semia-cli/src \
+	    build_backend
+
+build-check:
 	$(PYTHON) .github/scripts/package_build_check.py --out $(BUILD_DIR)/build-check.json
 
-release-check: check build ## Run release readiness checks
-	$(PYTHON) -c "from pathlib import Path; import sys; missing=[p for p in '$(RELEASE_REQUIRED)'.split() if not Path(p).exists()]; sys.exit('Missing release files: '+', '.join(missing)) if missing else print('release files present')"
+dist-build:
+	$(PYTHON) -m build --no-isolation --wheel --sdist --outdir $(BUILD_DIR)/ .
 
-clean: ## Remove local build artifacts
+twine-check:
+	$(PYTHON) -m twine check $(BUILD_DIR)/*.tar.gz $(BUILD_DIR)/*.whl
+
+build: clean build-check dist-build twine-check
+
+bundle-plugins: $(addprefix bundle-plugin-,$(PLUGIN_HOSTS))
+
+bundle-plugin-%:
+	@rm -rf $(BUILD_DIR)/.zipapp-stage
+	@mkdir -p $(BUILD_DIR)/.zipapp-stage packages/semia-plugins/$*/bin
+	@cp -r packages/semia-cli/src/semia_cli $(BUILD_DIR)/.zipapp-stage/
+	@cp -r packages/semia-core/src/semia_core $(BUILD_DIR)/.zipapp-stage/
+	@find $(BUILD_DIR)/.zipapp-stage -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+	$(PYTHON) .github/scripts/build_zipapp.py \
+	    --source $(BUILD_DIR)/.zipapp-stage \
+	    --main "semia_cli:main" \
+	    --python "/usr/bin/env python3" \
+	    --out packages/semia-plugins/$*/bin/semia.pyz
+	@rm -rf $(BUILD_DIR)/.zipapp-stage
+
+bundle-codex-plugin: bundle-plugin-codex
+
+# Install the freshly built wheel into the active environment and confirm the
+# `semia` console entry point is wired up. Catches packaging bugs (missing
+# package data, wrong entry point string) that `twine check` cannot detect.
+smoke-installed:
+	$(PYTHON) -m pip install --force-reinstall --no-deps $(BUILD_DIR)/*.whl
+	semia --help > /dev/null
+	@echo "smoke-installed: semia entry point is importable"
+
+# Confirm each bundled zipapp actually runs end-to-end (the drift check in CI
+# only verifies bytes match; this verifies the bundle is functionally intact).
+smoke-zipapps:
+	@for host in $(PLUGIN_HOSTS); do \
+	    echo "smoke: $$host" ; \
+	    $(PYTHON) "packages/semia-plugins/$$host/bin/semia.pyz" --help > /dev/null ; \
+	done
+
+release-check: check build
+	$(PYTHON) .github/scripts/check_release_files.py
+
+clean:
 	rm -rf $(BUILD_DIR) build *.egg-info
+	find . -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true

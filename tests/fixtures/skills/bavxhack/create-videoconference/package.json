@@ -1,0 +1,11 @@
+{
+  "name": "meetling-default",
+  "version": "1.3.0",
+  "description": "Default Meetling conference link + share payload for Claw (secure contacts loading)",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "license": "MIT"
+}

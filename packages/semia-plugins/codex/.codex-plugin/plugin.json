@@ -1,5 +1,5 @@
 {
-  "name": "semia-audit",
+  "name": "semia-skillscan",
   "version": "0.1.0",
   "description": "Representation Synthesis workflow for auditing agent skills in Codex.",
   "author": {
@@ -9,7 +9,7 @@
   },
   "homepage": "https://github.com/RiemaLabs/semia-skillscan",
   "repository": "https://github.com/RiemaLabs/semia-skillscan",
-  "license": "CC-BY-NC-ND-4.0",
+  "license": "Apache-2.0",
   "keywords": [
     "semia",
     "skill-audit",
@@ -19,7 +19,7 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Semia Audit",
+    "displayName": "Semia Skillscan",
     "shortDescription": "Audit agent skills with Semia SDL V2.",
     "longDescription": "Runs a plugin-first Semia workflow where Codex performs Stage 2 evidence-backed SDL extraction and deterministic Semia tools prepare, validate, detect, and report findings.",
     "developerName": "RiemaLabs",

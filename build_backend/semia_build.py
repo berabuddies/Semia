@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Small stdlib-only build backend for Semia's editable CLI installs.
 
 The repository intentionally has no runtime dependencies. This backend lets
@@ -11,17 +13,22 @@ import base64
 import csv
 import hashlib
 import io
-from pathlib import Path
 import shutil
+import tomllib
 import zipfile
+from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+_PYPROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+_PROJECT = _PYPROJECT["project"]
 
-NAME = "semia-skillscan"
-DIST = "semia_skillscan"
-VERSION = "0.1.0"
+NAME = _PROJECT["name"]
+DIST = NAME.replace("-", "_")
+VERSION = _PROJECT["version"]
+LICENSE_EXPRESSION = _PROJECT.get("license", "Apache-2.0")
+SUMMARY = _PROJECT.get("description", "")
 TAG = "py3-none-any"
 DIST_INFO = f"{DIST}-{VERSION}.dist-info"
-ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOTS = (
     ROOT / "packages" / "semia-core" / "src",
     ROOT / "packages" / "semia-cli" / "src",
@@ -72,15 +79,50 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
 
 
 def build_sdist(sdist_directory, config_settings=None):
+    # PEP 517 requires the sdist tarball to contain a single top-level
+    # directory named `{name}-{version}` and a `PKG-INFO` file inside it.
     base = f"{DIST}-{VERSION}"
     out_dir = Path(sdist_directory)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    staging = out_dir / f".{base}.staging"
+    if staging.exists():
+        shutil.rmtree(staging)
+    pkg_root = staging / base
+    shutil.copytree(
+        ROOT,
+        pkg_root,
+        ignore=shutil.ignore_patterns(
+            # Keep this list aligned with .gitignore so the sdist does not leak
+            # local development state. `.claude-plugin` / `.codex-plugin`
+            # directories under `packages/semia-plugins/` are NOT matched by
+            # these patterns and remain in the sdist as intended.
+            ".git",
+            ".venv",
+            ".venv*",
+            ".cache",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".semia",
+            ".omx",
+            ".claude",
+            ".codex",
+            ".env",
+            ".env.*",
+            "dist",
+            "build",
+            "output",
+            "__pycache__",
+            "*.pyc",
+            "*.egg-info",
+        ),
+    )
+    (pkg_root / "PKG-INFO").write_text(_metadata(), encoding="utf-8")
+
     archive_base = out_dir / base
-    tmp = out_dir / f"{base}.tmp"
-    if tmp.exists():
-        shutil.rmtree(tmp)
-    shutil.copytree(ROOT, tmp, ignore=shutil.ignore_patterns(".git", ".venv", ".omx", "dist", "__pycache__", "*.pyc"))
-    shutil.make_archive(str(archive_base), "gztar", root_dir=out_dir, base_dir=tmp.name)
-    shutil.rmtree(tmp)
+    shutil.make_archive(str(archive_base), "gztar", root_dir=staging, base_dir=base)
+    shutil.rmtree(staging)
     return f"{base}.tar.gz"
 
 
@@ -95,13 +137,19 @@ def _write_metadata_dir(metadata_directory: Path) -> str:
 
 def _metadata() -> str:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    license_files = _PROJECT.get("license-files") or []
+    license_file_lines = "".join(
+        f"License-File: {path}\n" for path in license_files if (ROOT / path).is_file()
+    )
     return (
-        "Metadata-Version: 2.3\n"
+        # Metadata 2.4 is required for PEP 639 License-Expression / License-File.
+        "Metadata-Version: 2.4\n"
         f"Name: {NAME}\n"
         f"Version: {VERSION}\n"
-        "Summary: Skill Behavior Mapping for AI agent skill auditing.\n"
+        f"Summary: {SUMMARY}\n"
         "Author: RiemaLabs\n"
-        "License-Expression: CC-BY-NC-ND-4.0\n"
+        f"License-Expression: {LICENSE_EXPRESSION}\n"
+        f"{license_file_lines}"
         "Requires-Python: >=3.11\n"
         "Provides-Extra: anthropic\n"
         "Requires-Dist: anthropic>=0.40; extra == 'anthropic'\n"
@@ -114,10 +162,7 @@ def _metadata() -> str:
 
 def _wheel_file() -> str:
     return (
-        "Wheel-Version: 1.0\n"
-        "Generator: semia-build 0.1.0\n"
-        "Root-Is-Purelib: true\n"
-        f"Tag: {TAG}\n"
+        f"Wheel-Version: 1.0\nGenerator: semia-build {VERSION}\nRoot-Is-Purelib: true\nTag: {TAG}\n"
     )
 
 

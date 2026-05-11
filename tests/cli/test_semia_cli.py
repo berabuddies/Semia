@@ -1,60 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 from __future__ import annotations
 
-import io
 import importlib
+import io
 import sys
 import tempfile
-import types
 import unittest
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CLI_SRC = REPO_ROOT / "packages" / "semia-cli" / "src"
+CORE_SRC = REPO_ROOT / "packages" / "semia-core" / "src"
+sys.path.insert(0, str(CORE_SRC))
 sys.path.insert(0, str(CLI_SRC))
 
 from semia_cli.main import main  # noqa: E402
 
 main_module = importlib.import_module("semia_cli.main")
+core_adapter_module = importlib.import_module("semia_cli.core_adapter")
 
 
 class SemiaCliTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._old_semia_core = sys.modules.pop("semia_core", None)
         self._old_synthesize_facts = main_module.llm_adapter.synthesize_facts
+        self._old_prepare = core_adapter_module.prepare
+        self._old_check = core_adapter_module.check
+        self._old_detect = core_adapter_module.detect
+        self._old_extract_baseline = core_adapter_module.extract_baseline
+        self._old_report = core_adapter_module.report
         self.calls: list[tuple[str, dict[str, object]]] = []
-        fake_core = types.ModuleType("semia_core")
 
-        def prepare(skill_path: Path, out_dir: Path) -> dict[str, object]:
-            kwargs: dict[str, object] = {"skill_path": skill_path, "out_dir": out_dir}
+        def prepare(skill_path: Path, run_dir: Path) -> dict[str, object]:
+            kwargs: dict[str, object] = {"skill_path": skill_path, "out_dir": run_dir}
             self.calls.append(("prepare", kwargs))
-            out_dir.mkdir(parents=True, exist_ok=True)
-            return {"status": "prepared", "run_dir": out_dir}
+            run_dir.mkdir(parents=True, exist_ok=True)
+            return {"status": "prepared", "run_dir": run_dir}
 
-        def check_facts(run_dir: Path, facts_path: Path | None = None) -> dict[str, object]:
-            kwargs: dict[str, object] = {"run_dir": run_dir, "facts_path": facts_path}
-            self.calls.append(("check_facts", kwargs))
+        def check(
+            run_dir: Path,
+            facts_path: Path | None = None,
+            **kwargs: object,
+        ) -> dict[str, object]:
+            payload = {"run_dir": run_dir, "facts_path": facts_path, **kwargs}
+            self.calls.append(("check_facts", payload))
+            self.calls.append(("align_evidence", payload))
             return {"status": "checked"}
 
-        def align_evidence(run_dir: Path) -> dict[str, object]:
-            kwargs: dict[str, object] = {"run_dir": run_dir}
-            self.calls.append(("align_evidence", kwargs))
-            return {"status": "aligned"}
-
         def detect(run_dir: Path) -> dict[str, object]:
-            kwargs: dict[str, object] = {"run_dir": run_dir}
-            self.calls.append(("detect", kwargs))
+            self.calls.append(("detect", {"run_dir": run_dir}))
             return {"status": "detected"}
 
         def extract_baseline(run_dir: Path) -> dict[str, object]:
-            kwargs: dict[str, object] = {"run_dir": run_dir}
-            self.calls.append(("extract_baseline", kwargs))
+            self.calls.append(("extract_baseline", {"run_dir": run_dir}))
             (run_dir / "synthesized_facts.dl").write_text('skill("s").\n', encoding="utf-8")
             return {"status": "baseline_synthesized"}
 
         def report(run_dir: Path, format: str) -> object:
-            kwargs: dict[str, object] = {"run_dir": run_dir, "format": format}
-            self.calls.append(("report", kwargs))
+            self.calls.append(("report", {"run_dir": run_dir, "format": format}))
             if format == "sarif":
                 return {"version": "2.1.0"}
             return "# Semia Report"
@@ -64,27 +67,44 @@ class SemiaCliTests(unittest.TestCase):
             *,
             provider: str | None = None,
             model: str | None = None,
+            base_url: str | None = None,
             validator=None,
         ) -> dict[str, object]:
-            kwargs: dict[str, object] = {"run_dir": run_dir, "provider": provider, "model": model, "validator": validator}
-            self.calls.append(("synthesize_facts", kwargs))
+            self.calls.append(
+                (
+                    "synthesize_facts",
+                    {
+                        "run_dir": run_dir,
+                        "provider": provider,
+                        "model": model,
+                        "base_url": base_url,
+                        "validator": validator,
+                    },
+                )
+            )
             (run_dir / "synthesized_facts.dl").write_text('skill("s").\n', encoding="utf-8")
-            return {"status": "synthesized", "provider": provider or "openai", "model": model or "provider-default"}
+            resolved_provider = provider or "responses"
+            return {
+                "status": "synthesized",
+                "provider": resolved_provider,
+                "model": model or f"{resolved_provider}:host-default",
+                "base_url": base_url,
+            }
 
-        fake_core.prepare = prepare
-        fake_core.check_facts = check_facts
-        fake_core.align_evidence = align_evidence
-        fake_core.detect = detect
-        fake_core.extract_baseline = extract_baseline
-        fake_core.report = report
-        sys.modules["semia_core"] = fake_core
+        core_adapter_module.prepare = prepare
+        core_adapter_module.check = check
+        core_adapter_module.detect = detect
+        core_adapter_module.extract_baseline = extract_baseline
+        core_adapter_module.report = report
         main_module.llm_adapter.synthesize_facts = synthesize_facts
 
     def tearDown(self) -> None:
         main_module.llm_adapter.synthesize_facts = self._old_synthesize_facts
-        sys.modules.pop("semia_core", None)
-        if self._old_semia_core is not None:
-            sys.modules["semia_core"] = self._old_semia_core
+        core_adapter_module.prepare = self._old_prepare
+        core_adapter_module.check = self._old_check
+        core_adapter_module.detect = self._old_detect
+        core_adapter_module.extract_baseline = self._old_extract_baseline
+        core_adapter_module.report = self._old_report
 
     def test_prepare_delegates_to_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -109,8 +129,13 @@ class SemiaCliTests(unittest.TestCase):
 
             self.assertEqual(code, 0, err)
             self.assertIn('"status": "checked"', out)
-            self.assertEqual([call[0] for call in self.calls], ["synthesize_facts", "check_facts", "align_evidence"])
-            self.assertEqual(self.calls[1][1]["facts_path"], run_dir.resolve() / "synthesized_facts.dl")
+            self.assertEqual(
+                [call[0] for call in self.calls],
+                ["synthesize_facts", "check_facts", "align_evidence"],
+            )
+            self.assertEqual(
+                self.calls[1][1]["facts_path"], run_dir.resolve() / "synthesized_facts.dl"
+            )
 
     def test_synthesize_accepts_explicit_facts_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -119,14 +144,16 @@ class SemiaCliTests(unittest.TestCase):
             facts_path = Path(tmp) / "facts.dl"
             facts_path.write_text('skill("s").\n', encoding="utf-8")
 
-            code, _out, err = self._run(
-                ["synthesize", str(run_dir), "--facts", str(facts_path)]
-            )
+            code, _out, err = self._run(["synthesize", str(run_dir), "--facts", str(facts_path)])
 
             self.assertEqual(code, 0, err)
-            self.assertEqual(self.calls[0][1]["facts_path"], facts_path.resolve())
+            self.assertEqual([call[0] for call in self.calls], ["check_facts", "align_evidence"])
+            self.assertEqual(
+                self.calls[0][1]["facts_path"], run_dir.resolve() / "synthesized_facts.dl"
+            )
+            self.assertTrue((run_dir.resolve() / "synthesized_facts.dl").exists())
 
-    def test_synthesize_validates_existing_default_facts_without_llm(self) -> None:
+    def test_synthesize_with_existing_default_facts_recalls_llm(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp) / "run"
             run_dir.mkdir()
@@ -137,8 +164,22 @@ class SemiaCliTests(unittest.TestCase):
 
             self.assertEqual(code, 0, err)
             self.assertIn('"status": "checked"', out)
+            self.assertEqual(
+                [call[0] for call in self.calls],
+                ["synthesize_facts", "check_facts", "align_evidence"],
+            )
+
+    def test_synthesize_skips_llm_when_facts_point_at_default_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            run_dir.mkdir()
+            facts_path = run_dir / "synthesized_facts.dl"
+            facts_path.write_text('skill("s").\n', encoding="utf-8")
+
+            code, _out, err = self._run(["synthesize", str(run_dir), "--facts", str(facts_path)])
+
+            self.assertEqual(code, 0, err)
             self.assertEqual([call[0] for call in self.calls], ["check_facts", "align_evidence"])
-            self.assertEqual(self.calls[0][1]["facts_path"], facts_path.resolve())
 
     def test_detect_and_report_delegate_to_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -179,9 +220,16 @@ class SemiaCliTests(unittest.TestCase):
             self.assertEqual(code, 0, err)
             self.assertEqual(
                 [call[0] for call in self.calls],
-                ["prepare", "synthesize_facts", "check_facts", "align_evidence", "detect", "report"],
+                [
+                    "prepare",
+                    "synthesize_facts",
+                    "check_facts",
+                    "align_evidence",
+                    "detect",
+                    "report",
+                ],
             )
-            self.assertIn("running synthesize with provider `openai`", out)
+            self.assertIn("running synthesize with provider `responses`", out)
             self.assertIn("# Semia Report", out)
 
     def test_scan_accepts_anthropic_provider(self) -> None:
@@ -215,12 +263,21 @@ class SemiaCliTests(unittest.TestCase):
             skill_path.mkdir()
             run_dir = Path(tmp) / "run"
 
-            code, out, err = self._run(["scan", str(skill_path), "--out", str(run_dir), "--offline-baseline"])
+            code, out, err = self._run(
+                ["scan", str(skill_path), "--out", str(run_dir), "--offline-baseline"]
+            )
 
             self.assertEqual(code, 0, err)
             self.assertEqual(
                 [call[0] for call in self.calls],
-                ["prepare", "extract_baseline", "check_facts", "align_evidence", "detect", "report"],
+                [
+                    "prepare",
+                    "extract_baseline",
+                    "check_facts",
+                    "align_evidence",
+                    "detect",
+                    "report",
+                ],
             )
             self.assertIn("conservative offline baseline map", out)
             self.assertIn("# Semia Report", out)
@@ -231,7 +288,9 @@ class SemiaCliTests(unittest.TestCase):
             skill_path.mkdir()
             run_dir = Path(tmp) / "run"
 
-            code, out, err = self._run(["scan", str(skill_path), "--out", str(run_dir), "--prepare-only"])
+            code, out, err = self._run(
+                ["scan", str(skill_path), "--out", str(run_dir), "--prepare-only"]
+            )
 
             self.assertEqual(code, 0, err)
             self.assertEqual([call[0] for call in self.calls], ["prepare"])
@@ -267,6 +326,21 @@ class SemiaCliTests(unittest.TestCase):
             self.assertIn("Copied synthesized facts", out)
             self.assertIn("# Semia Report", out)
 
+    def test_version_flag_prints_package_version(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        try:
+            sys.stdout = stdout
+            sys.stderr = stderr
+            with self.assertRaises(SystemExit) as ctx:
+                main(["--version"])
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+        self.assertEqual(ctx.exception.code, 0)
+        self.assertIn("semia ", stdout.getvalue())
+
     def _run(self, argv: list[str]) -> tuple[int, str, str]:
         stdout = io.StringIO()
         stderr = io.StringIO()
@@ -275,9 +349,7 @@ class SemiaCliTests(unittest.TestCase):
         return _run_with_streams(argv_with_streams, parser_streams)
 
 
-def _run_with_streams(
-    argv: list[str], streams: dict[str, io.StringIO]
-) -> tuple[int, str, str]:
+def _run_with_streams(argv: list[str], streams: dict[str, io.StringIO]) -> tuple[int, str, str]:
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     try:

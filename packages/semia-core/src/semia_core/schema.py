@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """SDL schema constants used by parser, checker, and rules tooling."""
 
 from __future__ import annotations
@@ -29,6 +31,8 @@ CORE_SCHEMA: dict[str, int] = {
 
 EVIDENCE_UNIT_SCHEMA: dict[str, int] = {
     "evidence_unit": 2,
+    "evidence_unit_type": 2,
+    "evidence_unit_location": 4,
 }
 
 _ENTITY_EVIDENCE_ARITIES: dict[str, int] = {
@@ -125,5 +129,13 @@ ALLOWED_CALL_CODES: frozenset[str] = frozenset(
         "script",
         "shell",
         "unresolved_target",
+    }
+)
+
+MECHANICAL_FACT_RELATIONS: frozenset[str] = frozenset(
+    {
+        "call_unconditional",
+        "call_conditional",
+        "value",
     }
 )

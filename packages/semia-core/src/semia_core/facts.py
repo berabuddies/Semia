@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Souffle-style SDL fact parser."""
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ def parse_facts(source: str, *, strict: bool = False) -> FactProgram:
     """Parse SDL facts and split core facts from evidence sidecars."""
 
     includes: list[str] = []
+    directives: list[str] = []
     core: list[Fact] = []
     evidence_text: list[Fact] = []
     evidence: list[Fact] = []
@@ -27,8 +30,11 @@ def parse_facts(source: str, *, strict: bool = False) -> FactProgram:
         stripped = _strip_comment(line).strip()
         if not stripped:
             continue
-        if stripped.startswith("#"):
+        if stripped.startswith("#include"):
             includes.append(stripped)
+            continue
+        if stripped.startswith("#"):
+            directives.append(stripped)
             continue
         try:
             fact = parse_fact_line(stripped, line=lineno)
@@ -56,7 +62,9 @@ def parse_facts(source: str, *, strict: bool = False) -> FactProgram:
         evidence_facts=tuple(evidence),
         evidence_unit_facts=tuple(evidence_units),
         unknown_facts=tuple(unknown),
+        preprocessor_directives=tuple(directives),
     )
+
 
 def parse_fact_line(line_text: str, *, line: int = 0) -> Fact:
     raw = line_text

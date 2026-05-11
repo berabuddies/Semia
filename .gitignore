@@ -1,4 +1,7 @@
+# Agent ignore files
 .omx/
+.claude/
+.codex/
 
 # Python
 __pycache__/
@@ -8,6 +11,12 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .cache/
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Virtual environments
 .venv/
@@ -20,6 +29,7 @@ dist/
 # Local environment
 .env
 .env.*
+!.env.example
 
 # Semia local runs
 .semia/

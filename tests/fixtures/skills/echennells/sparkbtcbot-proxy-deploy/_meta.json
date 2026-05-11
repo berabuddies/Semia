@@ -1,0 +1,11 @@
+{
+  "owner": "echennells",
+  "slug": "sparkbtcbot-proxy-deploy",
+  "displayName": "Deploy Spark Bitcoin L2 Proxy",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771264006849,
+    "commit": "https://github.com/openclaw/skills/commit/54267e8157001fce304bc490dbc106f4a97624de"
+  },
+  "history": []
+}

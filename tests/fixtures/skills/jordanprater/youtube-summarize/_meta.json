@@ -1,0 +1,11 @@
+{
+  "owner": "jordanprater",
+  "slug": "youtube-summarize",
+  "displayName": "Youtube Summarize",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1769875881586,
+    "commit": "https://github.com/clawdbot/skills/commit/e65b7484f59ca1c4a315a8f7316687bdc08e8db6"
+  },
+  "history": []
+}

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 RiemaLabs
 """Semia core analysis primitives.
 
 This package is intentionally stdlib-only. Agent plugins and CLIs can layer
@@ -16,17 +18,26 @@ from .artifacts import (
     FactProgram,
     FileInventoryEntry,
     Finding,
+    PrepareBundle,
     SemanticUnit,
     SkillSource,
     SourceMapEntry,
-    Stage1Bundle,
 )
 from .checker import check_program
 from .evidence import align_evidence_text
 from .facts import parse_facts
-from .pipeline import align_evidence, check, check_facts, detect, extract_baseline, prepare, render_report, report
+from .pipeline import (
+    align_evidence,
+    check,
+    check_facts,
+    detect,
+    extract_baseline,
+    prepare,
+    render_report,
+    report,
+)
+from .prepare import build_prepare_bundle
 from .report import render_markdown_report
-from .stage1 import build_stage1_bundle
 
 __all__ = [
     "AuditReport",
@@ -39,13 +50,13 @@ __all__ = [
     "FactProgram",
     "FileInventoryEntry",
     "Finding",
+    "PrepareBundle",
     "SemanticUnit",
     "SkillSource",
     "SourceMapEntry",
-    "Stage1Bundle",
     "align_evidence_text",
     "align_evidence",
-    "build_stage1_bundle",
+    "build_prepare_bundle",
     "check",
     "check_facts",
     "check_program",

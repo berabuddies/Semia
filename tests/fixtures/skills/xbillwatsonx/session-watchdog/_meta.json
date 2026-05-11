@@ -1,0 +1,11 @@
+{
+  "owner": "xbillwatsonx",
+  "slug": "session-watchdog",
+  "displayName": "Session Watchdog",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771690148393,
+    "commit": "https://github.com/openclaw/skills/commit/f84646dc77f68bc71b57256bb5d7c7d045f80b46"
+  },
+  "history": []
+}

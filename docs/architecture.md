@@ -81,7 +81,7 @@ The repository ships three host integration packages:
 All host packages share the same canonical audit workflow under:
 
 ```text
-packages/semia-plugins/shared/skills/semia-audit/SKILL.md
+packages/semia-plugins/shared/skills/semia-skillscan/SKILL.md
 ```
 
 Host-specific skill files are thin wrappers around the shared workflow and keep

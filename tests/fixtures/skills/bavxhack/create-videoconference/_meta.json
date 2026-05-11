@@ -1,0 +1,11 @@
+{
+  "owner": "bavxhack",
+  "slug": "create-videoconference",
+  "displayName": "Create secure videoconference",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771448935911,
+    "commit": "https://github.com/openclaw/skills/commit/040c64f80fb70695abff0ebcd0771eaa4a66c764"
+  },
+  "history": []
+}

@@ -1,0 +1,11 @@
+{
+  "owner": "crossallen",
+  "slug": "regex-assistant",
+  "displayName": "RegexAssistant",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771035741368,
+    "commit": "https://github.com/openclaw/skills/commit/f1818e7570e230ee7dde6e2911edc2d18d53d033"
+  },
+  "history": []
+}

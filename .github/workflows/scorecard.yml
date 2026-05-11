@@ -1,0 +1,59 @@
+name: OSSF Scorecard
+
+# OpenSSF Scorecard scans this repository against a published set of
+# software-supply-chain best practices (branch protection, pinned
+# dependencies, SAST, signed releases, etc.) and uploads the SARIF report
+# to GitHub Code Scanning. The "Security" tab surfaces individual
+# findings; the public badge endpoint at
+# https://api.securityscorecards.dev/projects/github.com/RiemaLabs/semia-skillscan
+# returns the aggregate score once results have been published.
+
+on:
+  # Re-evaluate weekly so improvements (and regressions) show up without
+  # waiting for an unrelated PR.
+  schedule:
+    - cron: "27 4 * * 1"
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: scorecard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Needed to upload SARIF results to GitHub Code Scanning.
+      security-events: write
+      # Needed to publish results and obtain badge endpoint.
+      id-token: write
+      # The repo is public, so plain read on contents/actions is enough.
+      contents: read
+      actions: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard analysis
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # publish_results: true sends scores to the OpenSSF public
+          # database, which powers the badge endpoint above. Safe for OSS;
+          # set to false if the repo ever becomes private.
+          publish_results: true
+
+      - name: Upload SARIF results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4 # v3
+        with:
+          sarif_file: results.sarif

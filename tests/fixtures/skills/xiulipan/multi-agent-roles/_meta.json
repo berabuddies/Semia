@@ -1,0 +1,11 @@
+{
+  "owner": "xiulipan",
+  "slug": "multi-agent-roles",
+  "displayName": "Multi Agent Roles",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771228278832,
+    "commit": "https://github.com/openclaw/skills/commit/c55ce3c4c1361c7572644238ccbfbeaf692e337e"
+  },
+  "history": []
+}

@@ -1,0 +1,26 @@
+{
+  "name": "ryot",
+  "version": "1.2.0",
+  "description": "Complete Ryot media tracker with progress tracking, reviews, collections, analytics, calendar, and automated daily/weekly reports",
+  "author": "f-liva",
+  "license": "MIT",
+  "keywords": [
+    "ryot",
+    "media-tracker",
+    "movies",
+    "tv-shows",
+    "books",
+    "anime",
+    "graphql",
+    "self-hosted",
+    "automation",
+    "analytics",
+    "collections",
+    "reviews",
+    "bulk-marking"
+  ],
+  "openclaw": {
+    "skillVersion": "1.2.0",
+    "minOpenClawVersion": "2026.2.0"
+  }
+}

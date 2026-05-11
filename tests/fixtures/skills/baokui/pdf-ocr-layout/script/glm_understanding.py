@@ -1,0 +1,185 @@
+import json
+import os
+import base64
+import argparse
+from pathlib import Path
+from zai import ZhipuAiClient
+
+# 配置模型
+TEXT_MODEL = "glm-4.7"     # 用于分析表格和纯文本逻辑
+VISION_MODEL = "glm-4.6v"  # 用于分析图片/图表 
+
+client = ZhipuAiClient(api_key=os.getenv("ZHIPU_API_KEY"))
+
+def encode_image(image_path):
+    """将图片文件编码为 Base64，供 VLM 使用"""
+    with open(image_path, "rb") as image_file:
+        encoded = base64.b64encode(image_file.read()).decode('utf-8')
+    return f"data:image/png;base64,{encoded}"
+
+def analyze_table_with_text_model(full_context, table_element):
+    """
+    针对表格：使用文本模型 (GLM-4-Plus)
+    输入：全文上下文 + 表格 Markdown
+    """
+    markdown_content = table_element.get('content', '')
+    title = table_element.get('detected_title', '未识别到标题')
+    
+    prompt = f"""
+你是一位专业的学术文档分析专家。
+请结合提供的【全文上下文】和【目标表格数据】，对表格进行深度解读。
+
+### 1. 全文上下文 (Context)
+---
+{full_context[:6000]} 
+...(上下文截断)
+---
+
+### 2. 目标表格 (Target Table)
+**识别到的表格标题**: {title}
+**表格内容**:
+{markdown_content}
+
+### 3. 分析任务
+请分析：
+1. **核心数据**：表格展示了哪些关键指标？有哪些显著的最大值/最小值或异常值？
+2. **论证作用**：结合正文，作者列出这个表格是为了证明什么结论？
+
+直接给出分析，不用输出额外内容。
+"""
+    try:
+        response = client.chat.completions.create(
+            model=TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.6,
+            thinking={
+            "type": "diabled",    # 启用深度思考模式
+        },
+        top_p=0.8,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"[Text Analysis Failed]: {str(e)}"
+
+def analyze_image_with_vision_model(full_context, image_element):
+    """
+    针对图片：使用多模态模型 (GLM-4V-Plus)
+    输入：全文上下文 + 图片 Base64 + 标题
+    """
+    img_path = image_element.get('file_path')
+    title = image_element.get('detected_title', '未识别到标题')
+    
+    if not img_path or not os.path.exists(img_path):
+        return "无法分析：找不到图片文件路径。"
+
+    # 读取并编码图片
+    base64_img = encode_image(img_path)
+    
+    # 构建 VLM Prompt
+    # 注意：GLM-4V 支持在文本中穿插图片，这里我们将上下文作为背景知识
+    prompt_text = f"""
+你是一位多模态文档分析专家。
+请参考【全文上下文】中的背景信息，观察这张【图片】，并结合它的【标题】进行深度解读。
+
+### 1. 图片元数据
+**识别到的图像标题/Caption**: {title}
+
+### 2. 全文上下文 (Context)
+(仅供参考，用于理解图片在文中的作用)
+---
+{full_context[:6000]} 
+---
+
+### 3. 分析任务
+请结合图片视觉内容和文字上下文回答：
+1. **视觉描述**：这张图展示了什么？(例如：系统架构图、折线趋势图、实验对比图等)。如果是数据图，请描述具体的趋势（如上升、下降、收敛）。
+2. **语义关联**：结合上下文，这张图对应文中的哪个 Figure？
+3. **核心结论**：这张图得出了什么结论？它如何支持文章的核心观点？
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model=VISION_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt_text
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": base64_img
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=0.6, # 视觉模型通常需要较低温度以减少幻觉
+            thinking={
+            "type": "diabled",   
+            },
+            top_p=0.8,
+            
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"[Vision Analysis Failed]: {str(e)}"
+
+def process_understanding(json_path):
+    print(f"[Analysis] Loading data from {json_path}...")
+    json_path = Path(json_path).resolve()
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    full_context = data.get('full_markdown_context', '')
+    elements = data.get('elements', [])
+    
+    results = []
+
+    for item in elements:
+        element_type = item['type']
+        item_id = item['id']
+        print(f"  > Analyzing {item_id} ({element_type})...")
+        
+        analysis_result = ""
+        
+        # === 分流逻辑 ===
+        if element_type == 'table':
+            # 表格 -> 文本模型
+            analysis_result = analyze_table_with_text_model(full_context, item)
+            
+        elif element_type == 'image':
+            # 图片 -> 多模态视觉模型
+            analysis_result = analyze_image_with_vision_model(full_context, item)
+            
+        else:
+            analysis_result = "未知类型，跳过分析。"
+
+        # 回写结果
+        result_item = item.copy()
+        result_item['deep_understanding'] = analysis_result
+        
+        # 为了输出整洁，可以把 content (表格md) 或 file_path 也就是原始输入保留，
+        # 但如果 base64 这种大字段在内存里，输出时不要带上
+        results.append(result_item)
+
+    # 保存最终结果
+    final_output_path = json_path.parent / f"{json_path.stem}_analysis.json"
+    with open(final_output_path, 'w', encoding='utf-8') as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    
+    print(f"[Analysis] Done. Report saved to {final_output_path}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", required=True, help="Path to the JSON generated by extracted script")
+    args = parser.parse_args()
+    
+    if not os.getenv("ZHIPU_API_KEY"):
+        print("Error: Please set ZHIPU_API_KEY environment variable.")
+    else:
+        process_understanding(args.data)

@@ -1,0 +1,11 @@
+{
+  "owner": "zaycv",
+  "slug": "nanopdf",
+  "displayName": "Nano PDF",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770238775722,
+    "commit": "https://github.com/clawdbot/skills/commit/896892e60f421908e7d6d75d0e39c4d5b8383f67"
+  },
+  "history": []
+}

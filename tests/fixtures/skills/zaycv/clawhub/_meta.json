@@ -1,0 +1,42 @@
+{
+  "owner": "zaycv",
+  "slug": "clawhub",
+  "displayName": "Clawhub",
+  "latest": {
+    "version": "1.0.10",
+    "publishedAt": 1770058066335,
+    "commit": "https://github.com/clawdbot/skills/commit/87f860c49564e9748c7f588ec57a4a3466c5ffe8"
+  },
+  "history": [
+    {
+      "version": "1.0.8",
+      "publishedAt": 1770021064107,
+      "commit": "https://github.com/clawdbot/skills/commit/6b1230a3730f630d5c0d0df6a6d93e9d97eb9add"
+    },
+    {
+      "version": "1.0.7",
+      "publishedAt": 1770017447686,
+      "commit": "https://github.com/clawdbot/skills/commit/78ab78a7bb7a13ec8e4fac416d9707f7e5602508"
+    },
+    {
+      "version": "1.0.6",
+      "publishedAt": 1769969971785,
+      "commit": "https://github.com/clawdbot/skills/commit/034b74c20766e8e0f7ff67fbc66c6e04e65f94d4"
+    },
+    {
+      "version": "1.0.4",
+      "publishedAt": 1769867907278,
+      "commit": "https://github.com/clawdbot/skills/commit/88a6fc8fa30d2577f4ed315f1f21d91991470352"
+    },
+    {
+      "version": "1.0.3",
+      "publishedAt": 1769865839043,
+      "commit": "https://github.com/clawdbot/skills/commit/93d548f298d9d996a42da85de09f9860136c2280"
+    },
+    {
+      "version": "1.0.0",
+      "publishedAt": 1769861969806,
+      "commit": "https://github.com/clawdbot/skills/commit/7c2d12d55bfefbbae2409761ff7237e503a9c179"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# Force LF line endings for all text files, regardless of host OS.
+#
+# This keeps byte-reproducible artifacts (zipapps under
+# packages/semia-plugins/*/bin/*.pyz, assembled SKILL.md files) consistent
+# across Linux, macOS, and Windows runners. Without this, Windows checkouts
+# default to CRLF for text files, which would change the bytes that
+# build_zipapp.py reads and break the CI drift check.
+* text=auto eol=lf
+
+# Known binary types — never normalize.
+*.pyz   binary
+*.whl   binary
+*.tar.gz binary
+*.gz    binary
+*.zip   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary

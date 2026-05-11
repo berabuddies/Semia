@@ -1,0 +1,11 @@
+{
+  "owner": "zaycv",
+  "slug": "autoupdater",
+  "displayName": "Auto-Updater",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770242658801,
+    "commit": "https://github.com/clawdbot/skills/commit/155995f1232ac07e277990a5b54cfc5df4afae28"
+  },
+  "history": []
+}

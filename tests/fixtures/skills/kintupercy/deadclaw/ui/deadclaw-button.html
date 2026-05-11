@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<!--
+  DeadClaw — WebChat Kill Button Widget
+
+  A persistent red button for the OpenClaw WebChat dashboard. When clicked,
+  it calls kill.sh via OpenClaw's WebChat API hooks and shows confirmation.
+
+  Embedding:
+    OpenClaw.WebChat.registerWidget('deadclaw-button', {
+      src: 'skills/deadclaw/ui/deadclaw-button.html',
+      position: 'top-bar',
+      persistent: true
+    });
+
+  If WebChat hooks are unavailable, the button shows an error with manual
+  instructions instead of silently failing.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeadClaw Kill Switch</title>
+<style>
+  /* ----------------------------------------------------------------
+     DeadClaw button — dark, stark, high contrast.
+     This is a security tool. The design communicates urgency.
+  ---------------------------------------------------------------- */
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    min-height: 60px;
+  }
+
+  .deadclaw-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    gap: 12px;
+    background: #0a0a0a;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  /* Pulsing red dot — shows agent activity */
+  .status-indicator {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #cc0000;
+  }
+
+  .status-dot.active {
+    background: #ff0000;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .status-dot.idle {
+    background: #444;
+    animation: none;
+  }
+
+  .status-dot.killed {
+    background: #ff0000;
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 4px rgba(255, 0, 0, 0.4);
+    }
+    50% {
+      opacity: 0.5;
+      box-shadow: 0 0 12px rgba(255, 0, 0, 0.8);
+    }
+  }
+
+  /* The kill button itself */
+  .kill-button {
+    flex: 1;
+    max-width: 600px;
+    padding: 12px 24px;
+    background: #cc0000;
+    color: #ffffff;
+    border: 2px solid #ff0000;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    user-select: none;
+  }
+
+  .kill-button:hover {
+    background: #e60000;
+    transform: scale(1.01);
+  }
+
+  .kill-button:active {
+    background: #990000;
+    transform: scale(0.99);
+  }
+
+  .kill-button:disabled {
+    background: #333;
+    border-color: #555;
+    color: #888;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Confirmation state — after a successful kill */
+  .kill-button.confirmed {
+    background: #1a1a1a;
+    border-color: #ff0000;
+    color: #ff0000;
+    cursor: default;
+  }
+
+  /* Error state — when WebChat hooks aren't available */
+  .kill-button.error {
+    background: #1a1a1a;
+    border-color: #ff6600;
+    color: #ff6600;
+  }
+
+  /* Status text below the button */
+  .status-text {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    padding-top: 4px;
+    font-family: monospace;
+    min-height: 16px;
+  }
+
+  .status-text.alert {
+    color: #ff0000;
+  }
+
+  .status-text.success {
+    color: #00cc44;
+  }
+</style>
+</head>
+<body>
+
+<div class="deadclaw-container">
+  <div class="status-indicator">
+    <div class="status-dot active" id="statusDot"></div>
+  </div>
+
+  <button class="kill-button" id="killButton" onclick="handleKill()">
+    Kill All Agents
+  </button>
+</div>
+
+<div class="status-text" id="statusText">DeadClaw armed</div>
+
+<script>
+  // -----------------------------------------------------------------------
+  // DeadClaw WebChat Button Logic
+  //
+  // This script tries to use OpenClaw's WebChat API hooks to execute the
+  // kill script. If those hooks aren't available (e.g., running outside
+  // WebChat), it degrades gracefully with manual instructions.
+  // -----------------------------------------------------------------------
+
+  var state = 'armed';  // armed | killing | confirmed | error
+
+  // Check if OpenClaw WebChat hooks are available
+  function hasWebChatHooks() {
+    return (typeof window.OpenClaw !== 'undefined' &&
+            typeof window.OpenClaw.exec === 'function');
+  }
+
+  // Execute the kill via OpenClaw's WebChat API
+  function executeKill() {
+    return new Promise(function(resolve, reject) {
+      if (!hasWebChatHooks()) {
+        reject(new Error('WebChat hooks not available'));
+        return;
+      }
+
+      // Call kill.sh through OpenClaw's exec interface
+      // REPLACE_THIS: Adjust the path if your skill is installed elsewhere
+      window.OpenClaw.exec({
+        command: 'skills/deadclaw/scripts/kill.sh',
+        args: ['--trigger-source', 'webchat', '--trigger-method', 'button'],
+        timeout: 30000
+      }).then(function(result) {
+        resolve(result);
+      }).catch(function(err) {
+        reject(err);
+      });
+    });
+  }
+
+  // Main click handler
+  function handleKill() {
+    if (state === 'killing' || state === 'confirmed') return;
+
+    var button = document.getElementById('killButton');
+    var statusText = document.getElementById('statusText');
+    var statusDot = document.getElementById('statusDot');
+
+    // Show killing state
+    state = 'killing';
+    button.disabled = true;
+    button.textContent = 'Killing...';
+    statusText.textContent = 'Sending kill signal...';
+    statusText.className = 'status-text alert';
+
+    executeKill().then(function(result) {
+      // Success — show confirmation with timestamp and kill count
+      state = 'confirmed';
+      button.disabled = true;
+      button.className = 'kill-button confirmed';
+
+      // Parse the result for timestamp and process count
+      var output = (result && result.output) ? result.output : '';
+      var killTimestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+      var processCount = '?';
+
+      // Try to extract process count from kill.sh output (format: "X processes killed")
+      var countMatch = output.match(/(\d+)\s+processes?\s+killed/i);
+      if (countMatch) {
+        processCount = countMatch[1];
+      }
+
+      button.textContent = 'Stopped — ' + processCount + ' killed at ' + killTimestamp;
+
+      var summary = output || 'Kill complete. ' + processCount + ' processes killed.';
+      statusText.textContent = summary;
+      statusText.className = 'status-text success';
+      statusDot.className = 'status-dot killed';
+
+      // Reset after 30 seconds so the button can be used again
+      setTimeout(function() {
+        resetButton();
+      }, 30000);
+
+    }).catch(function(err) {
+      // WebChat hooks unavailable — show manual instructions
+      state = 'error';
+      button.disabled = false;
+      button.className = 'kill-button error';
+      button.textContent = 'Manual Kill Required';
+
+      statusText.innerHTML =
+        'WebChat hooks unavailable. Run manually: ' +
+        '<code style="color:#ff6600">./scripts/kill.sh</code> ' +
+        'or send "kill" to any connected channel.';
+      statusText.className = 'status-text alert';
+    });
+  }
+
+  // Reset button to armed state
+  function resetButton() {
+    state = 'armed';
+    var button = document.getElementById('killButton');
+    var statusText = document.getElementById('statusText');
+    var statusDot = document.getElementById('statusDot');
+
+    button.disabled = false;
+    button.className = 'kill-button';
+    button.textContent = 'Kill All Agents';
+    statusText.textContent = 'DeadClaw armed';
+    statusText.className = 'status-text';
+    statusDot.className = 'status-dot active';
+  }
+
+  // On load, check if hooks are available and update status accordingly
+  (function init() {
+    if (!hasWebChatHooks()) {
+      var statusText = document.getElementById('statusText');
+      statusText.textContent = 'DeadClaw armed (standalone mode — WebChat hooks not detected)';
+    }
+  })();
+</script>
+
+</body>
+</html>

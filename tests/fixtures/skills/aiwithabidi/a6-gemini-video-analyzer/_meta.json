@@ -1,0 +1,11 @@
+{
+  "owner": "aiwithabidi",
+  "slug": "a6-gemini-video-analyzer",
+  "displayName": "Gemini Video Analyzer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771250411910,
+    "commit": "https://github.com/openclaw/skills/commit/c5a173b2af3928a925ecde41a385f9a0e70f2099"
+  },
+  "history": []
+}

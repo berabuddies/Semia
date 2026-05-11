@@ -1,0 +1,18 @@
+{
+  "lastWeeklyReview": null,
+  "windowDays": 7,
+  "counts": {
+    "errors": 0,
+    "learnings": 0,
+    "featureRequests": 0,
+    "repeatedMistakes": 0,
+    "promotions": 0
+  },
+  "routing": {
+    "fast": 0,
+    "think": 0,
+    "deep": 0,
+    "strategic": 0
+  },
+  "nextWeekFocus": ""
+}

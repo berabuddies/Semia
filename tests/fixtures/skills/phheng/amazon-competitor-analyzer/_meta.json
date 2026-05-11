@@ -1,0 +1,22 @@
+{
+  "owner": "phheng",
+  "slug": "amazon-competitor-analyzer",
+  "displayName": "Amazon Competitor Analyzer",
+  "latest": {
+    "version": "0.1.6",
+    "publishedAt": 1772008505312,
+    "commit": "https://github.com/openclaw/skills/commit/f5eff422bd7f9c2a3da8201608f329750871bb91"
+  },
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1770508183410,
+      "commit": "https://github.com/openclaw/skills/commit/384dbc2e4b4bf6261f632d6886d32ab51a63ed26"
+    },
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770390964826,
+      "commit": "https://github.com/openclaw/skills/commit/2079597de571dcc9dc68687bf415579174213099"
+    }
+  ]
+}

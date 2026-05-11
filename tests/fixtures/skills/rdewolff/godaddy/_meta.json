@@ -1,0 +1,11 @@
+{
+  "owner": "rdewolff",
+  "slug": "godaddy",
+  "displayName": "godaddy",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1769607323458,
+    "commit": "https://github.com/clawdbot/skills/commit/deeed076665b60ad8671800e213059955c31a976"
+  },
+  "history": []
+}

@@ -1,0 +1,37 @@
+{
+  "owner": "tunaissacoding",
+  "slug": "claude-connect",
+  "displayName": "Claude Connect",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1769399254595,
+    "commit": "https://github.com/clawdbot/skills/commit/8a242f44129860b3d0adeb2f8666e6a71e416118"
+  },
+  "history": [
+    {
+      "version": "1.0.12",
+      "publishedAt": 1769264790371,
+      "commit": "https://github.com/clawdbot/skills/commit/cddada60b4f4d173ae55958888fbd900ff68bd2c"
+    },
+    {
+      "version": "1.0.9",
+      "publishedAt": 1769236172008,
+      "commit": "https://github.com/clawdbot/skills/commit/4edfed4a41f4c6da2adf17a5acdbf5b3314f02fa"
+    },
+    {
+      "version": "1.0.5",
+      "publishedAt": 1769229321633,
+      "commit": "https://github.com/clawdbot/skills/commit/15a52c6d332280b2cd8f8962601642dafe553d0c"
+    },
+    {
+      "version": "1.0.4",
+      "publishedAt": 1769227575635,
+      "commit": "https://github.com/clawdbot/skills/commit/2c74106391ce1a78486053b662ec589d47534aab"
+    },
+    {
+      "version": "1.0.1",
+      "publishedAt": 1769193130831,
+      "commit": "https://github.com/clawdbot/skills/commit/c54e0517f8d56ff4545f48891e5c16e0cad0179d"
+    }
+  ]
+}
