@@ -747,5 +747,210 @@ class SDLRulesEndToEndTests(unittest.TestCase):
                     )
 
 
+class EqBuiltinTests(unittest.TestCase):
+    """Cover the variable-binding branches of `_match_builtin` for `eq`/`neq`.
+
+    The bound==bound and disequality-with-mismatch branches are exercised
+    indirectly by the SDL rule scenarios; the variable-binding paths only
+    fire when one or both operands of `=` are unbound at the point the
+    builtin is reached, which the rule corpus does not happen to trigger.
+    """
+
+    def _run_program(self, dl_text: str) -> dict[str, set[str]]:
+        path = Path(tempfile.mkdtemp()) / "p.dl"
+        self.addCleanup(shutil.rmtree, path.parent)
+        path.write_text(dl_text, encoding="utf-8")
+        with tempfile.TemporaryDirectory() as out:
+            run_evaluator(path, out)
+            out_dir = Path(out)
+            return {
+                csv.stem: {
+                    line for line in csv.read_text(encoding="utf-8").splitlines() if line
+                }
+                for csv in out_dir.glob("*.csv")
+            }
+
+    def test_eq_binds_unbound_left_var_to_constant_right(self) -> None:
+        # `x = "v"` in body: left is unbound variable, right is a constant.
+        # Exercises engine.py 196-202 (left unbound, right bound).
+        program = """
+        .decl out(v: symbol)
+        .output out
+        out(x) :- x = "literal".
+        """
+        result = self._run_program(program)
+        self.assertEqual(result, {"out": {"literal"}})
+
+    def test_eq_binds_unbound_right_var_to_constant_left(self) -> None:
+        # `"v" = x`: symmetric to the above, exercises engine.py 203-209.
+        program = """
+        .decl out(v: symbol)
+        .output out
+        out(x) :- "literal" = x.
+        """
+        result = self._run_program(program)
+        self.assertEqual(result, {"out": {"literal"}})
+
+    def test_eq_raises_when_both_sides_unbound(self) -> None:
+        # Both `y` and `z` are body-only and unbound when the builtin runs;
+        # neither can be bound from the other. Exercises engine.py 210.
+        from semia_core.datalog_eval.engine import EvalError
+
+        program = """
+        .decl src(v: symbol)
+        .decl out(v: symbol)
+        .output out
+        src("a").
+        out(x) :- src(x), y = z.
+        """
+        path = Path(tempfile.mkdtemp()) / "p.dl"
+        self.addCleanup(shutil.rmtree, path.parent)
+        path.write_text(program, encoding="utf-8")
+        with tempfile.TemporaryDirectory() as out_dir, self.assertRaises(EvalError):
+            run_evaluator(path, out_dir)
+
+    def test_neq_raises_when_either_side_unbound(self) -> None:
+        # Disequality requires both arguments bound — exercises engine.py 212.
+        from semia_core.datalog_eval.engine import EvalError
+
+        program = """
+        .decl src(v: symbol)
+        .decl out(v: symbol)
+        .output out
+        src("a").
+        out(x) :- src(x), y != "z".
+        """
+        path = Path(tempfile.mkdtemp()) / "p.dl"
+        self.addCleanup(shutil.rmtree, path.parent)
+        path.write_text(program, encoding="utf-8")
+        with tempfile.TemporaryDirectory() as out_dir, self.assertRaises(EvalError):
+            run_evaluator(path, out_dir)
+
+
+class ParserErrorRecoveryTests(unittest.TestCase):
+    """Exercise the parser's lexical edge cases: string escapes, block
+    comments, malformed atoms, and unsupported constructs.
+
+    These paths are reached only by unusual or hostile input, so the SDL
+    corpus does not cover them. They matter because the parser is the entry
+    point for untrusted facts coming back from synthesis.
+    """
+
+    def test_parse_dl_text_entrypoint_returns_program(self) -> None:
+        # Exercises parser.py 86-89 (the text variant of parse_dl_file).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        program = parse_dl_text(
+            """
+            .decl src(x: symbol)
+            .output src
+            src("a").
+            """
+        )
+        self.assertIn("src", program.facts)
+        self.assertEqual(program.facts["src"], {("a",)})
+
+    def test_block_comments_are_stripped(self) -> None:
+        # Exercises parser.py 191-197 (block comment handler).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        program = parse_dl_text(
+            """
+            .decl src(x: symbol)
+            .output src
+            /* this fact is commented out
+               and spans multiple lines.
+            src("ignored").
+            */
+            src("kept").
+            """
+        )
+        self.assertEqual(program.facts["src"], {("kept",)})
+
+    def test_strip_comments_preserves_escaped_quote_in_string(self) -> None:
+        # Exercises parser.py 173-175 (escape inside quoted string while
+        # stripping comments — `\\` must not terminate the string).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        program = parse_dl_text(
+            r"""
+            .decl src(x: symbol)
+            .output src
+            src("a\"b").
+            """
+        )
+        self.assertEqual(program.facts["src"], {('a"b',)})
+
+    def test_unescape_string_handles_all_known_escapes(self) -> None:
+        # Exercises parser.py 468-471 (escape mapping: \n, \t, \r, \", \\,
+        # and unknown sequences which fall through to the literal char).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        program = parse_dl_text(
+            r"""
+            .decl src(x: symbol)
+            .output src
+            src("nl\nhere").
+            src("tab\there").
+            src("cr\rhere").
+            src("bs\\here").
+            src("unknown\xhere").
+            """
+        )
+        self.assertEqual(
+            program.facts["src"],
+            {
+                ("nl\nhere",),
+                ("tab\there",),
+                ("cr\rhere",),
+                ("bs\\here",),
+                ("unknownxhere",),
+            },
+        )
+
+    def test_malformed_atom_raises_parse_error(self) -> None:
+        # Exercises parser.py 437 (open_idx <= 0 or close mismatch).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        with self.assertRaises(ParseError):
+            parse_dl_text(".decl src(x: symbol)\nsrc(\"a\"\n")  # missing close paren
+
+    def test_invalid_relation_name_raises(self) -> None:
+        # Exercises parser.py 440 (relation name doesn't match identifier).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        with self.assertRaises(ParseError):
+            parse_dl_text('.decl src(x: symbol)\n123bad("a").\n')
+
+    def test_unrecognized_term_raises(self) -> None:
+        # Exercises parser.py 458 (term is not _, string, int, or ident).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        with self.assertRaises(ParseError):
+            parse_dl_text('.decl src(x: symbol)\nsrc(@@@bad).\n')
+
+    def test_empty_term_raises(self) -> None:
+        # Exercises parser.py 449 (empty argument).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        with self.assertRaises(ParseError):
+            parse_dl_text('.decl src(x: symbol, y: symbol)\nsrc("a", ).\n')
+
+    def test_explicit_negation_on_equality_rejected(self) -> None:
+        # Exercises parser.py 419 (negation on builtins not allowed).
+        from semia_core.datalog_eval.parser import parse_dl_text
+
+        with self.assertRaises(ParseError):
+            parse_dl_text(
+                """
+                .decl src(x: symbol)
+                .decl out(x: symbol)
+                .output out
+                src("a").
+                out(x) :- src(x), !(x = "a").
+                """
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

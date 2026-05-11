@@ -396,5 +396,74 @@ class ScoreAndTokenEdgeCaseTests(unittest.TestCase):
         self.assertEqual(_score("一二三", "四五六"), 0.0)
 
 
+class ValueAllowedActionReferenceTests(unittest.TestCase):
+    """Cover SDL017 / SDL018 — `value_*_allowed_action` reference checks.
+
+    These rules guard against typos in policy facts: a fact that grants a
+    value or secret access to a non-existent action would silently never
+    fire. Without this check, rule authors would be unaware their policy
+    is dead.
+    """
+
+    def test_value_sensitive_allowed_action_undeclared_value_emits_sdl017(self) -> None:
+        bad = """
+        skill("demo").
+        action("act", "demo").
+        value("v_ok", "act", "param").
+        value_sensitive_allowed_action("v_missing", "act").
+        """
+        result = check_program(bad)
+        codes = {issue.code for issue in result.errors}
+        self.assertIn("SDL017", codes)
+
+    def test_value_sensitive_allowed_action_undeclared_action_emits_sdl018(self) -> None:
+        bad = """
+        skill("demo").
+        action("act", "demo").
+        value("v_ok", "act", "param").
+        value_sensitive_allowed_action("v_ok", "act_missing").
+        """
+        result = check_program(bad)
+        codes = {issue.code for issue in result.errors}
+        self.assertIn("SDL018", codes)
+
+    def test_value_secret_allowed_action_undeclared_value_emits_sdl017(self) -> None:
+        bad = """
+        skill("demo").
+        action("act", "demo").
+        value("v_ok", "act", "param").
+        value_secret_allowed_action("v_missing", "act").
+        """
+        result = check_program(bad)
+        codes = {issue.code for issue in result.errors}
+        self.assertIn("SDL017", codes)
+
+    def test_value_secret_allowed_action_undeclared_action_emits_sdl018(self) -> None:
+        bad = """
+        skill("demo").
+        action("act", "demo").
+        value("v_ok", "act", "param").
+        value_secret_allowed_action("v_ok", "act_missing").
+        """
+        result = check_program(bad)
+        codes = {issue.code for issue in result.errors}
+        self.assertIn("SDL018", codes)
+
+    def test_well_formed_allowed_action_facts_emit_no_reference_issues(self) -> None:
+        # Positive control — confirms the validators do not over-fire on
+        # legal input, so the failures above are real signal.
+        ok = """
+        skill("demo").
+        action("act", "demo").
+        value("v_ok", "act", "param").
+        value_sensitive_allowed_action("v_ok", "act").
+        value_secret_allowed_action("v_ok", "act").
+        """
+        result = check_program(ok)
+        codes = {issue.code for issue in result.errors}
+        self.assertNotIn("SDL017", codes)
+        self.assertNotIn("SDL018", codes)
+
+
 if __name__ == "__main__":
     unittest.main()
