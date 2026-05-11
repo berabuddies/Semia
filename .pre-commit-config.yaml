@@ -57,3 +57,21 @@ repos:
     rev: v8.21.2
     hooks:
       - id: gitleaks
+
+  # Auto-rebuild the plugin zipapps whenever bundled source changes. CI
+  # enforces the same invariant (`git diff --exit-code -- packages/
+  # semia-plugins/*/bin/*.pyz` after `make bundle-plugins`); running it
+  # locally catches the drift before push instead of after CI fails.
+  #
+  # The hook follows the standard "fix in working tree, fail the commit"
+  # pattern: if it rebuilt the bundles, the new `.pyz` files land in the
+  # working tree as unstaged changes — re-`git add` them and retry the
+  # commit. The hook does not silently mutate the index.
+  - repo: local
+    hooks:
+      - id: bundle-plugins
+        name: Rebuild plugin zipapps after src changes
+        entry: .github/scripts/precommit_bundle_plugins.sh
+        language: script
+        files: ^packages/semia-(cli|core)/src/
+        pass_filenames: false
