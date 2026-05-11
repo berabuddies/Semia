@@ -68,7 +68,10 @@ The pre-commit suite runs:
 - `ruff format`.
 - `gitleaks` against staged changes.
 
-CI re-runs the same hooks plus a full-history `gitleaks` scan.
+CI re-runs the same hooks except for `gitleaks`, which stays local-only:
+the GitHub Action requires a paid license for organization repositories,
+so we rely on the pre-commit hook (and its repo-wide
+`pre-commit run --all-files` mode) to catch secrets before push.
 
 ## Tests
 

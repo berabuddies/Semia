@@ -216,8 +216,8 @@ using the standard library.
 
 Settings come from CLI flags, environment variables, or a repo-local
 `.env`. Copy [`.env.example`](.env.example) to `.env` and fill in your
-credentials — `.env` is gitignored, and CI runs `gitleaks` to make sure
-nothing leaks into the history.
+credentials — `.env` is gitignored, and the pre-commit `gitleaks` hook
+runs locally against staged changes so secrets do not reach the history.
 
 ### Providers
 
@@ -386,9 +386,10 @@ make release-check   # full pre-release gate
 
 The root quality gates stay stdlib-friendly: `compileall`, `unittest`
 discovery, and stdlib-only validators. Pre-commit adds `ruff` lint/format
-and `gitleaks` secret scanning; CI mirrors both via
-[`lint.yml`](.github/workflows/lint.yml) and
-[`gitleaks.yml`](.github/workflows/gitleaks.yml).
+and `gitleaks` secret scanning. CI mirrors `ruff` via
+[`lint.yml`](.github/workflows/lint.yml); `gitleaks` stays local-only
+because the upstream GitHub Action now requires a paid license for
+organization repositories.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and the DCO
 sign-off requirement.

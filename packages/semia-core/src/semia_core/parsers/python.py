@@ -48,7 +48,7 @@ def parse_python_units(
     units: list[tuple[str, str, int, int]] = []
 
     body = list(tree.body)
-    import_nodes = [n for n in body if isinstance(n, (ast.Import, ast.ImportFrom))]
+    import_nodes = [n for n in body if isinstance(n, ast.Import | ast.ImportFrom)]
     import_node_ids = {id(n) for n in import_nodes}
     if import_nodes:
         start = import_nodes[0].lineno
@@ -66,13 +66,13 @@ def parse_python_units(
             continue
         start = node.lineno
         end = getattr(node, "end_lineno", node.lineno) or node.lineno
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             _emit_decorators(units, node, lines)
             _emit_def_with_body(units, node, lines, UNIT_TYPE_DEF)
         elif isinstance(node, ast.ClassDef):
             _emit_decorators(units, node, lines)
             _emit_class_with_methods(units, node, lines)
-        elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        elif isinstance(node, ast.Assign | ast.AnnAssign | ast.AugAssign):
             text = "\n".join(lines[start - 1 : end])
             units.append((UNIT_TYPE_ASSIGNMENT, text, start, end))
         else:
@@ -133,7 +133,7 @@ def _emit_class_with_methods(
     sig_text = "\n".join(lines[sig_start - 1 : sig_end])
     units.append((UNIT_TYPE_CLASS_DEF, sig_text, sig_start, sig_end))
     for stmt in node.body:
-        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
             _emit_decorators(units, stmt, lines)
             _emit_def_with_body(units, stmt, lines, UNIT_TYPE_METHOD_DEF)
         else:

@@ -9,16 +9,27 @@ minimum_pre_commit_version: "3.5.0"
 
 # Bundled hooks from pre-commit's standard repo + ruff + gitleaks.
 # Pins are updated via `pre-commit autoupdate`.
+#
+# `tests/fixtures/` is external skill audit corpus — third-party files we
+# intentionally check in byte-identical. Style-fixing hooks must not
+# rewrite them or the corpus drifts from the upstream skills it was
+# captured from. Safety hooks (private-key detection, large-file guard,
+# merge-conflict / case-conflict) continue to run on fixtures.
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^tests/fixtures/
       - id: end-of-file-fixer
+        exclude: ^tests/fixtures/
       - id: check-yaml
+        exclude: ^tests/fixtures/
       - id: check-json
+        exclude: ^tests/fixtures/
       - id: check-toml
+        exclude: ^tests/fixtures/
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: check-added-large-files
@@ -26,13 +37,21 @@ repos:
       - id: detect-private-key
       - id: mixed-line-ending
         args: ["--fix=lf"]
+        exclude: ^tests/fixtures/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.7.4
     hooks:
+      # `tests/fixtures/` must be excluded at the pre-commit layer: several
+      # skill fixtures carry their own `pyproject.toml`, which ruff treats
+      # as a nested project root — bypassing the `extend-exclude` in our
+      # top-level pyproject.toml. Filtering paths before they reach ruff
+      # avoids that switch entirely.
       - id: ruff
         args: ["--fix", "--exit-non-zero-on-fix"]
+        exclude: ^tests/fixtures/
       - id: ruff-format
+        exclude: ^tests/fixtures/
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.21.2

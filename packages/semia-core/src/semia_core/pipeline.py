@@ -60,7 +60,9 @@ def prepare(
     hostile_nonce = secrets.token_hex(8)
     prepared_sha = hashlib.sha256(bundle.source.inlined_text.encode("utf-8")).hexdigest()
 
-    (target / ARTIFACT_PREPARED_SKILL).write_text(bundle.source.inlined_text, encoding="utf-8")
+    (target / ARTIFACT_PREPARED_SKILL).write_text(
+        bundle.source.inlined_text, encoding="utf-8", newline=""
+    )
     _write_json(
         target / ARTIFACT_PREPARE_METADATA,
         {
@@ -84,10 +86,12 @@ def prepare(
     (target / ARTIFACT_PREPARE_UNITS_DL).write_text(
         _render_prepare_units_dl(bundle.semantic_units),
         encoding="utf-8",
+        newline="",
     )
     (target / ARTIFACT_SYNTHESIS_PROMPT).write_text(
         _render_synthesis_prompt(bundle.source.source_id, hostile_nonce),
         encoding="utf-8",
+        newline="",
     )
     _update_manifest(
         target,
@@ -147,7 +151,7 @@ def extract_baseline(run_dir: str | Path, **_: Any) -> dict[str, Any]:
             )
 
     path = root / ARTIFACT_SYNTHESIZED_FACTS
-    path.write_text("\n".join(facts) + "\n", encoding="utf-8")
+    path.write_text("\n".join(facts) + "\n", encoding="utf-8", newline="")
     _update_manifest(
         root, {"synthesis_mode": "conservative_baseline", "synthesis_written_at": _now()}
     )
@@ -206,7 +210,9 @@ def check_facts(
     normalized_source = _render_normalized_program(
         program.core_facts, evidence.normalized_facts, prepared.evidence_unit_facts()
     )
-    (root / ARTIFACT_SYNTHESIS_NORMALIZED).write_text(normalized_source, encoding="utf-8")
+    (root / ARTIFACT_SYNTHESIS_NORMALIZED).write_text(
+        normalized_source, encoding="utf-8", newline=""
+    )
     _write_json(
         root / ARTIFACT_SYNTHESIS_CHECK,
         _check_payload(
@@ -323,7 +329,9 @@ def detect(run_dir: str | Path, **_: Any) -> dict[str, Any]:
     result = run_detector(detector_input, root / "detection_souffle_output")
     _write_json(root / ARTIFACT_DETECTION_RESULT, _detector_payload(result))
     (root / ARTIFACT_DETECTION_FINDINGS).write_text(
-        _render_findings_facts(result), encoding="utf-8"
+        _render_findings_facts(result),
+        encoding="utf-8",
+        newline="",
     )
     _update_manifest(
         root,
@@ -396,7 +404,7 @@ def report(
     if fmt != "md":
         raise ValueError(f"unsupported report format: {fmt}")
     markdown = render_markdown_report(audit)
-    (root / ARTIFACT_REPORT_MD).write_text(markdown, encoding="utf-8")
+    (root / ARTIFACT_REPORT_MD).write_text(markdown, encoding="utf-8", newline="")
     return markdown
 
 
@@ -515,10 +523,10 @@ def _write_detector_input(root: Path, normalized: Path) -> Path:
             raise FileNotFoundError(
                 f"Semia detector rule file is missing in package data: {name}. Reinstall semia-skillscan."
             ) from exc
-        (rules_dst / name).write_text(text, encoding="utf-8")
+        (rules_dst / name).write_text(text, encoding="utf-8", newline="")
     program = parse_facts(normalized.read_text(encoding="utf-8"))
     path = root / ARTIFACT_DETECTION_INPUT
-    path.write_text(program.core_source(include_directives=True), encoding="utf-8")
+    path.write_text(program.core_source(include_directives=True), encoding="utf-8", newline="")
     return path
 
 
@@ -981,7 +989,9 @@ def _read_json_optional(path: Path) -> dict[str, Any] | None:
 
 def _write_json(path: Path, payload: Any) -> None:
     path.write_text(
-        json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="",
     )
 
 

@@ -72,7 +72,7 @@ def synthesize_facts(
             if existing != resume_content:
                 timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S_%f")
                 backup_path = resume_path.with_suffix(resume_path.suffix + f".bak.{timestamp}")
-                backup_path.write_text(existing, encoding="utf-8")
+                backup_path.write_text(existing, encoding="utf-8", newline="")
                 _log_stderr(
                     f"semia: resume backed up existing {resume_path.name} to {backup_path.name}"
                 )
@@ -486,7 +486,7 @@ def _write_synthesis_metadata(
 
 def _atomic_write(path: Path, content: str) -> None:
     tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(content, encoding="utf-8")
+    tmp_path.write_text(content, encoding="utf-8", newline="")
     os.replace(tmp_path, path)
 
 
