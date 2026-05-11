@@ -34,6 +34,44 @@ SRC_ROOTS = (
     ROOT / "packages" / "semia-cli" / "src",
 )
 
+# Explicit allowlist of top-level files that belong in the sdist. A whitelist
+# is intentional: a blacklist of "things to skip" repeatedly leaked dev state
+# (.coverage / coverage.xml — which embed absolute build-host paths! — plus
+# .agents/, .github/, tests/, etc.).
+SDIST_FILES = (
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "PRIVACY.md",
+)
+
+# Directories included recursively. Caches and bytecode inside them are
+# filtered by `_SDIST_DIR_IGNORE`. Everything else in the repo (tests, CI
+# scaffolding, Makefile, dev tooling configs) is deliberately excluded.
+SDIST_DIRS = (
+    "build_backend",
+    "packages/semia-cli/src",
+    "packages/semia-core/src",
+    # Ship the per-host plugin assets (zipapps, SKILL.md, manifests) so users
+    # who install from the sdist still get a complete plugin bundle.
+    "packages/semia-plugins",
+    # Architecture / release / supply-chain docs are referenced from the
+    # README and from check_release_files.py — keep them shippable.
+    "docs",
+)
+
+_SDIST_DIR_IGNORE = shutil.ignore_patterns(
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".DS_Store",
+)
+
 
 def get_requires_for_build_wheel(config_settings=None):
     return []
@@ -81,6 +119,10 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
 def build_sdist(sdist_directory, config_settings=None):
     # PEP 517 requires the sdist tarball to contain a single top-level
     # directory named `{name}-{version}` and a `PKG-INFO` file inside it.
+    #
+    # We populate that directory from explicit allowlists (SDIST_FILES,
+    # SDIST_DIRS). Tests, CI scaffolding, dev tooling configs, and any
+    # development state (.coverage / coverage.xml / .agents/) stay out.
     base = f"{DIST}-{VERSION}"
     out_dir = Path(sdist_directory)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -89,35 +131,23 @@ def build_sdist(sdist_directory, config_settings=None):
     if staging.exists():
         shutil.rmtree(staging)
     pkg_root = staging / base
-    shutil.copytree(
-        ROOT,
-        pkg_root,
-        ignore=shutil.ignore_patterns(
-            # Keep this list aligned with .gitignore so the sdist does not leak
-            # local development state. `.claude-plugin` / `.codex-plugin`
-            # directories under `packages/semia-plugins/` are NOT matched by
-            # these patterns and remain in the sdist as intended.
-            ".git",
-            ".venv",
-            ".venv*",
-            ".cache",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".semia",
-            ".omx",
-            ".claude",
-            ".codex",
-            ".env",
-            ".env.*",
-            "dist",
-            "build",
-            "output",
-            "__pycache__",
-            "*.pyc",
-            "*.egg-info",
-        ),
-    )
+    pkg_root.mkdir(parents=True)
+
+    for rel in SDIST_FILES:
+        src = ROOT / rel
+        if not src.is_file():
+            raise FileNotFoundError(f"sdist allowlisted file is missing: {rel}")
+        dst = pkg_root / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+    for rel in SDIST_DIRS:
+        src = ROOT / rel
+        if not src.is_dir():
+            raise FileNotFoundError(f"sdist allowlisted directory is missing: {rel}")
+        dst = pkg_root / rel
+        shutil.copytree(src, dst, ignore=_SDIST_DIR_IGNORE)
+
     (pkg_root / "PKG-INFO").write_text(_metadata(), encoding="utf-8")
 
     archive_base = out_dir / base

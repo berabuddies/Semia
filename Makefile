@@ -1,5 +1,5 @@
 .PHONY: help test coverage compile validate-plugin-manifests check types \
-        build-check dist-build twine-check build \
+        build-check dist-build twine-check check-sdist build \
         bundle-plugins bundle-codex-plugin \
         assemble-plugin-skills check-plugin-skills \
         smoke-installed smoke-zipapps \
@@ -27,7 +27,8 @@ help:
 	@echo "  build-check               - validate package metadata (writes $(BUILD_DIR)/build-check.json)"
 	@echo "  dist-build                - build wheel and sdist into $(BUILD_DIR)/"
 	@echo "  twine-check               - validate built artifacts with twine"
-	@echo "  build                     - build-check + dist-build + twine-check"
+	@echo "  check-sdist               - assert sdist does not leak dev state (tests/, .coverage, ...)"
+	@echo "  build                     - build-check + dist-build + twine-check + check-sdist"
 	@echo "  bundle-plugins            - rebuild semia.pyz for every host in PLUGIN_HOSTS"
 	@echo "  bundle-plugin-<host>      - rebuild packages/semia-plugins/<host>/bin/semia.pyz"
 	@echo "  bundle-codex-plugin       - alias for bundle-plugin-codex"
@@ -96,7 +97,13 @@ dist-build:
 twine-check:
 	$(PYTHON) -m twine check $(BUILD_DIR)/*.tar.gz $(BUILD_DIR)/*.whl
 
-build: clean build-check dist-build twine-check
+# Regression guard: assert the sdist tarball only contains allowlisted files.
+# Catches any future change to build_backend/semia_build.py that accidentally
+# starts shipping tests/, .coverage, .agents/, etc.
+check-sdist:
+	$(PYTHON) .github/scripts/check_sdist_contents.py $(BUILD_DIR)/*.tar.gz
+
+build: clean build-check dist-build twine-check check-sdist
 
 bundle-plugins: $(addprefix bundle-plugin-,$(PLUGIN_HOSTS))
 
