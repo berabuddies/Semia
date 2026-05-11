@@ -1,0 +1,20 @@
+{
+  "name": "semia-skillscan",
+  "owner": {
+    "name": "RiemaLabs",
+    "url": "https://github.com/RiemaLabs"
+  },
+  "plugins": [
+    {
+      "name": "semia-skillscan",
+      "source": "./packages/semia-plugins/claude-code",
+      "description": "Static security audit toolkit for AI agent skills — surfaces every capability a skill may exercise, with evidence.",
+      "homepage": "https://github.com/RiemaLabs/semia-skillscan",
+      "category": "Developer Tools",
+      "author": {
+        "name": "RiemaLabs",
+        "url": "https://github.com/RiemaLabs"
+      }
+    }
+  ]
+}
