@@ -114,13 +114,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--python",
         default="/usr/bin/env python3",
-        help="shebang interpreter (default: %(default)s)",
+        help=(
+            "shebang interpreter (default: %(default)s). Callers should NOT "
+            "override this from a shell on Windows: MSYS/Git Bash auto-converts "
+            "POSIX-looking argv entries (e.g. `/usr/bin/env` becomes "
+            "`C:/Program Files/Git/usr/bin/env`), which would silently change "
+            "the shebang baked into the zipapp."
+        ),
     )
     parser.add_argument("--out", required=True, type=Path, help="output .pyz path")
     args = parser.parse_args(argv)
 
     if not args.source.is_dir():
         print(f"source is not a directory: {args.source}", file=sys.stderr)
+        return 1
+
+    # Catch the MSYS path-conversion footgun: a shebang containing a Windows
+    # drive prefix (`C:/...`) or backslashes can only come from path
+    # translation, never from a legitimate caller. Refuse it so the .pyz
+    # bytes stay reproducible across runners.
+    if "\\" in args.python or (len(args.python) >= 2 and args.python[1] == ":"):
+        print(
+            f"--python looks path-translated by MSYS/Git Bash: {args.python!r}. "
+            "Drop --python from the caller and let the in-Python default apply.",
+            file=sys.stderr,
+        )
         return 1
 
     write_zipapp(

@@ -113,10 +113,16 @@ bundle-plugin-%:
 	@cp -r packages/semia-cli/src/semia_cli $(BUILD_DIR)/.zipapp-stage/
 	@cp -r packages/semia-core/src/semia_core $(BUILD_DIR)/.zipapp-stage/
 	@find $(BUILD_DIR)/.zipapp-stage -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+	# Do NOT pass --python here. On Windows runners CI uses Git Bash, and
+	# MSYS auto-converts argv entries that look like POSIX paths
+	# (`/usr/bin/env python3` -> `C:/Program Files/Git/usr/bin/env python3`),
+	# which would silently change the shebang baked into the zipapp and
+	# break the CI drift check. The script's own default
+	# (`/usr/bin/env python3`, set in Python source) is identical and
+	# beyond MSYS reach.
 	$(PYTHON) .github/scripts/build_zipapp.py \
 	    --source $(BUILD_DIR)/.zipapp-stage \
 	    --main "semia_cli:main" \
-	    --python "/usr/bin/env python3" \
 	    --out packages/semia-plugins/$*/bin/semia.pyz
 	@rm -rf $(BUILD_DIR)/.zipapp-stage
 
