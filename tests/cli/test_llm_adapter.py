@@ -1461,5 +1461,319 @@ class ExtractFactsHardeningTests(unittest.TestCase):
         self.assertIn("commentary", facts)
 
 
+class ResponseShapeExtractionTests(unittest.TestCase):
+    """Cover the nested response-payload paths in `_extract_responses_text`
+    (OpenAI) and `_extract_anthropic_text` (Anthropic).
+
+    The happy-path tests in this file all use the flat top-level shape
+    (`output_text` for OpenAI, single text block for Anthropic). The nested
+    `output[*].content[*].text` and `content[*].text` shapes are how both
+    APIs actually return reasoning-model and tool-augmented completions, so
+    leaving them untested means a future API drift could silently strip
+    synthesis output to an empty string.
+    """
+
+    def test_responses_extracts_nested_output_content_blocks(self) -> None:
+        from semia_cli.llm_providers import _extract_responses_text
+
+        payload = {
+            "output": [
+                {"content": [{"text": "hello"}, {"text": "world"}]},
+                {"content": [{"text": "!"}]},
+            ]
+        }
+        self.assertEqual(_extract_responses_text(payload), "hello\nworld\n!")
+
+    def test_responses_skips_non_dict_items(self) -> None:
+        from semia_cli.llm_providers import _extract_responses_text
+
+        # Defensive branches — non-dict items in `output` / `content` and
+        # non-string `text` are skipped rather than raising.
+        payload = {
+            "output": [
+                "ignored",
+                {"content": ["ignored", {"text": 123}, {"text": "kept"}]},
+            ]
+        }
+        self.assertEqual(_extract_responses_text(payload), "kept")
+
+    def test_responses_raises_when_no_text_pieces(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _extract_responses_text
+
+        with self.assertRaises(LlmSynthesisError):
+            _extract_responses_text({"output": [{"content": [{"text": 1}]}]})
+
+    def test_responses_prefers_flat_output_text_when_present(self) -> None:
+        from semia_cli.llm_providers import _extract_responses_text
+
+        self.assertEqual(
+            _extract_responses_text({"output_text": "direct", "output": []}),
+            "direct",
+        )
+
+    def test_anthropic_extracts_typed_text_blocks(self) -> None:
+        from semia_cli.llm_providers import _extract_anthropic_text
+
+        payload = {
+            "content": [
+                {"type": "text", "text": "a"},
+                {"type": "tool_use", "input": {}},  # ignored — wrong type
+                {"type": "text", "text": "b"},
+            ]
+        }
+        self.assertEqual(_extract_anthropic_text(payload), "a\nb")
+
+    def test_anthropic_skips_non_dict_blocks(self) -> None:
+        from semia_cli.llm_providers import _extract_anthropic_text
+
+        payload = {"content": ["ignored", {"type": "text", "text": "kept"}]}
+        self.assertEqual(_extract_anthropic_text(payload), "kept")
+
+    def test_anthropic_raises_when_no_text_blocks(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _extract_anthropic_text
+
+        with self.assertRaises(LlmSynthesisError):
+            _extract_anthropic_text({"content": [{"type": "tool_use"}]})
+
+
+class RunSubprocessErrorTests(unittest.TestCase):
+    """Cover the three failure paths of `_run_subprocess`: timeout, OSError
+    (typically "executable not found"), and non-zero exit code. Each maps
+    to an `LlmSynthesisError` whose message is what the user sees first
+    when a provider CLI misbehaves."""
+
+    def test_translates_timeout_to_llm_synthesis_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_subprocess
+
+        with (
+            mock.patch(
+                "semia_cli.llm_providers.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(cmd=["fake"], timeout=1),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_subprocess(["fake"], stdin="prompt")
+        self.assertIn("timed out", str(ctx.exception))
+
+    def test_translates_oserror_to_llm_synthesis_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_subprocess
+
+        with (
+            mock.patch(
+                "semia_cli.llm_providers.subprocess.run",
+                side_effect=FileNotFoundError("no such binary: codex"),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_subprocess(["codex"], stdin="prompt")
+        self.assertIn("no such binary", str(ctx.exception))
+
+    def test_translates_nonzero_exit_to_llm_synthesis_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_subprocess
+
+        with (
+            mock.patch(
+                "semia_cli.llm_providers.subprocess.run",
+                return_value=subprocess.CompletedProcess(
+                    args=["fake"],
+                    returncode=2,
+                    stdout="",
+                    stderr="boom",
+                ),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_subprocess(["fake"], stdin="prompt")
+        self.assertIn("(2)", str(ctx.exception))
+        self.assertIn("boom", str(ctx.exception))
+
+    def test_passes_cwd_and_env_through(self) -> None:
+        # Sanity: positional/keyword wiring matches the production call.
+        from semia_cli.llm_providers import _run_subprocess
+
+        captured: dict[str, object] = {}
+
+        def fake_run(cmd, **kwargs):
+            captured["cmd"] = cmd
+            captured.update(kwargs)
+            return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr="")
+
+        with mock.patch("semia_cli.llm_providers.subprocess.run", side_effect=fake_run):
+            result = _run_subprocess(
+                ["x"],
+                stdin="data",
+                cwd=Path("/tmp"),
+                env={"A": "1"},
+            )
+        self.assertEqual(result.stdout, "ok")
+        self.assertEqual(captured["cwd"], "/tmp")
+        self.assertEqual(captured["env"], {"A": "1"})
+        self.assertEqual(captured["input"], "data")
+
+
+class HttpErrorPathTests(unittest.TestCase):
+    """Cover the HTTP failure branches in the OpenAI and Anthropic
+    providers: ``HTTPError`` (server returned non-2xx), ``OSError`` /
+    ``JSONDecodeError`` (transport or body issues), and SSE-stream
+    ``response.failed`` events plus empty-stream fallbacks."""
+
+    @staticmethod
+    def _http_error(code: int, body: bytes) -> Exception:
+        from io import BytesIO
+        from urllib import error
+
+        return error.HTTPError(
+            "https://example/api",
+            code,
+            "Bad",
+            {"Content-Type": "application/json"},
+            BytesIO(body),
+        )
+
+    def test_responses_translates_http_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_responses
+
+        with (
+            mock.patch.dict("os.environ", {"OPENAI_API_KEY": "k"}, clear=True),
+            mock.patch(
+                "semia_cli.llm_providers.request.urlopen",
+                side_effect=self._http_error(429, b"rate limited"),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_responses("p", model="gpt-5.5", base_url="https://api.example/v1")
+        self.assertIn("429", str(ctx.exception))
+        self.assertIn("rate limited", str(ctx.exception))
+
+    def test_responses_translates_transport_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_responses
+
+        with (
+            mock.patch.dict("os.environ", {"OPENAI_API_KEY": "k"}, clear=True),
+            mock.patch(
+                "semia_cli.llm_providers.request.urlopen",
+                side_effect=OSError("connection refused"),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_responses("p", model="gpt-5.5", base_url="https://api.example/v1")
+        self.assertIn("connection refused", str(ctx.exception))
+
+    def test_anthropic_translates_http_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_anthropic_messages
+
+        with (
+            mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "k"}, clear=True),
+            mock.patch(
+                "semia_cli.llm_providers.request.urlopen",
+                side_effect=self._http_error(500, b"oops"),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_anthropic_messages(
+                "p",
+                model="claude-opus-4-7",
+                base_url="https://anthropic.example",
+            )
+        self.assertIn("500", str(ctx.exception))
+        self.assertIn("oops", str(ctx.exception))
+
+    def test_anthropic_translates_transport_error(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_anthropic_messages
+
+        with (
+            mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "k"}, clear=True),
+            mock.patch(
+                "semia_cli.llm_providers.request.urlopen",
+                side_effect=OSError("dns failure"),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_anthropic_messages(
+                "p",
+                model="claude-opus-4-7",
+                base_url="https://anthropic.example",
+            )
+        self.assertIn("dns failure", str(ctx.exception))
+
+    def test_responses_stream_propagates_response_failed_event(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_responses
+
+        class FakeStream:
+            def __init__(self) -> None:
+                self._chunks = iter(
+                    [
+                        b"event: response.failed\n",
+                        b'data: {"error": "boom"}\n\n',
+                    ]
+                )
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            @property
+            def headers(self) -> dict[str, str]:
+                return {"Content-Type": "text/event-stream"}
+
+            def read(self, _size: int = -1) -> bytes:
+                return next(self._chunks, b"")
+
+        with (
+            mock.patch.dict("os.environ", {"OPENAI_API_KEY": "k"}, clear=True),
+            mock.patch(
+                "semia_cli.llm_providers.request.urlopen",
+                return_value=FakeStream(),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_responses("p", model="gpt-5.5", base_url="https://api.example/v1")
+        self.assertIn("boom", str(ctx.exception))
+
+    def test_responses_stream_empty_output_raises(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+        from semia_cli.llm_providers import _run_responses
+
+        class EmptyStream:
+            def __init__(self) -> None:
+                self._chunks = iter([b""])
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            @property
+            def headers(self) -> dict[str, str]:
+                return {"Content-Type": "text/event-stream"}
+
+            def read(self, _size: int = -1) -> bytes:
+                return next(self._chunks, b"")
+
+        with (
+            mock.patch.dict("os.environ", {"OPENAI_API_KEY": "k"}, clear=True),
+            mock.patch(
+                "semia_cli.llm_providers.request.urlopen",
+                return_value=EmptyStream(),
+            ),
+            self.assertRaises(LlmSynthesisError) as ctx,
+        ):
+            _run_responses("p", model="gpt-5.5", base_url="https://api.example/v1")
+        self.assertIn("did not include", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

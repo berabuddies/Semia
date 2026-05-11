@@ -764,9 +764,7 @@ class EqBuiltinTests(unittest.TestCase):
             run_evaluator(path, out)
             out_dir = Path(out)
             return {
-                csv.stem: {
-                    line for line in csv.read_text(encoding="utf-8").splitlines() if line
-                }
+                csv.stem: {line for line in csv.read_text(encoding="utf-8").splitlines() if line}
                 for csv in out_dir.glob("*.csv")
             }
 
@@ -913,7 +911,7 @@ class ParserErrorRecoveryTests(unittest.TestCase):
         from semia_core.datalog_eval.parser import parse_dl_text
 
         with self.assertRaises(ParseError):
-            parse_dl_text(".decl src(x: symbol)\nsrc(\"a\"\n")  # missing close paren
+            parse_dl_text('.decl src(x: symbol)\nsrc("a"\n')  # missing close paren
 
     def test_invalid_relation_name_raises(self) -> None:
         # Exercises parser.py 440 (relation name doesn't match identifier).
@@ -927,7 +925,7 @@ class ParserErrorRecoveryTests(unittest.TestCase):
         from semia_core.datalog_eval.parser import parse_dl_text
 
         with self.assertRaises(ParseError):
-            parse_dl_text('.decl src(x: symbol)\nsrc(@@@bad).\n')
+            parse_dl_text(".decl src(x: symbol)\nsrc(@@@bad).\n")
 
     def test_empty_term_raises(self) -> None:
         # Exercises parser.py 449 (empty argument).
