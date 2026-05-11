@@ -70,15 +70,15 @@ from the panel or by re-running the relevant install command.
 claude plugin marketplace add RiemaLabs/Semia
 ```
 
-*Slash commands inside the Claude Code CLI:*
+*Interactive plugin manager inside the Claude Code CLI:*
 
-```text
-/plugin marketplace add RiemaLabs/Semia
-/plugin install semia@semia
-```
+1. Launch `claude`.
+2. Inside Claude Code, input `/plugins` (plural — opens the plugin panel).
+3. Press **→** (Right) twice and select **Add Marketplace**.
+4. Enter `RiemaLabs/Semia`.
 
 Either path registers the marketplace; finish installing `semia` from
-the slash command above or with `claude plugin install semia@semia`.
+the panel or with `claude plugin install semia@semia`.
 
 **OpenClaw** — one shell command registers the marketplace and installs:
 
@@ -364,12 +364,13 @@ claude plugin marketplace add RiemaLabs/Semia
 claude plugin install semia@semia
 ```
 
-*Slash commands inside the Claude Code CLI:*
+*Interactive plugin manager inside the Claude Code CLI:*
 
-```text
-/plugin marketplace add RiemaLabs/Semia
-/plugin install semia@semia
-```
+1. Launch `claude`.
+2. Inside Claude Code, input `/plugins` (plural — opens the plugin panel).
+3. Press **→** (Right) twice and select **Add Marketplace**.
+4. Enter `RiemaLabs/Semia`.
+5. Back in the plugin panel, install `semia` from the newly-added marketplace.
 
 The `name@marketplace` form on `install` is required — the second `semia`
 is the marketplace identifier from the project's `marketplace.json`.
