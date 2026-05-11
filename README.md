@@ -42,18 +42,36 @@ see [Set up an LLM provider](#set-up-an-llm-provider) below.
 
 ### Inside Codex, Claude Code, or OpenClaw
 
-Install the plugin once:
+Install the plugin once. Each host has its own flow.
+
+**Codex** — pick either path:
+
+*Shell (one-liner):*
 
 ```bash
-# Codex (slash command, run inside the Codex CLI — not a separate shell)
+codex plugin marketplace add RiemaLabs/semia-skillscan
+```
+
+*Interactive plugin manager inside the Codex CLI:*
+
+1. Launch `codex`.
+2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
+3. Press **←** (Left) to enter **Add marketplace**.
+4. Enter `RiemaLabs/semia-skillscan`.
+
+Either path leaves the marketplace registered; install `semia-skillscan`
+from the panel or by re-running the relevant install command.
+
+**Claude Code** — slash commands inside the Claude Code CLI (not a separate shell):
+
+```text
 /plugin marketplace add RiemaLabs/semia-skillscan
 /plugin install semia-skillscan@semia-skillscan
+```
 
-# Claude Code (slash command, run inside the Claude Code CLI — not a separate shell)
-/plugin marketplace add RiemaLabs/semia-skillscan
-/plugin install semia-skillscan@semia-skillscan
+**OpenClaw** — one shell command registers the marketplace and installs:
 
-# OpenClaw (shell command — one step registers and installs)
+```bash
 openclaw plugins install clawhub:semia-skillscan
 ```
 
@@ -301,14 +319,24 @@ relies on the published `semia` CLI on `PATH` (ClawHub provisions it via
 you want `semia` available as a normal shell command alongside the in-host
 workflow.
 
-**Codex** — slash commands run inside the Codex CLI (not a separate shell):
+**Codex** — pick either path.
 
-```text
-/plugin marketplace add RiemaLabs/semia-skillscan
-/plugin install semia-skillscan@semia-skillscan
+*Shell (scripts and CI):*
+
+```bash
+codex plugin marketplace add RiemaLabs/semia-skillscan
 ```
 
-Headless setups can enable it directly by adding the following to
+*Interactive plugin manager inside the Codex CLI:*
+
+1. Launch `codex`.
+2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
+3. Press **←** (Left) to enter **Add marketplace**.
+4. Enter `RiemaLabs/semia-skillscan`.
+5. Back in the plugin panel, install `semia-skillscan` from the newly-added
+   marketplace.
+
+Headless setups can enable the plugin directly by adding the following to
 `~/.codex/config.toml`:
 
 ```toml
