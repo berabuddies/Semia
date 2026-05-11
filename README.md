@@ -62,12 +62,23 @@ codex plugin marketplace add RiemaLabs/Semia
 Either path leaves the marketplace registered; install `semia`
 from the panel or by re-running the relevant install command.
 
-**Claude Code** — slash commands inside the Claude Code CLI (not a separate shell):
+**Claude Code** — pick either path:
+
+*Shell (one-liner):*
+
+```bash
+claude plugin marketplace add RiemaLabs/Semia
+```
+
+*Slash commands inside the Claude Code CLI:*
 
 ```text
 /plugin marketplace add RiemaLabs/Semia
 /plugin install semia@semia
 ```
+
+Either path registers the marketplace; finish installing `semia` from
+the slash command above or with `claude plugin install semia@semia`.
 
 **OpenClaw** — one shell command registers the marketplace and installs:
 
@@ -344,24 +355,34 @@ Headless setups can enable the plugin directly by adding the following to
 enabled = true
 ```
 
-**Claude Code** — slash commands run inside the Claude Code CLI (not a separate shell):
+**Claude Code** — pick either path.
+
+*Shell (scripts and CI):*
+
+```bash
+claude plugin marketplace add RiemaLabs/Semia
+claude plugin install semia@semia
+```
+
+*Slash commands inside the Claude Code CLI:*
 
 ```text
 /plugin marketplace add RiemaLabs/Semia
 /plugin install semia@semia
 ```
 
-The `name@marketplace` form on `/plugin install` is required — the second
-`semia` is the marketplace identifier from the project's
-`marketplace.json`. The marketplace registration step (`/plugin marketplace
-add ...`) is only available as a slash command inside the CLI; there is no
-`claude plugin marketplace add` shell equivalent in the official
-[plugins reference](https://code.claude.com/docs/en/plugins-reference#cli-commands-reference).
-Once installed, the management subcommands (`install`, `uninstall`,
-`enable`, `disable`, `list`, …) are also exposed as shell commands —
-e.g. `claude plugin install semia@semia --scope project`.
+The `name@marketplace` form on `install` is required — the second `semia`
+is the marketplace identifier from the project's `marketplace.json`.
+Use `--scope user|project|local` on the shell form to control where the
+plugin is recorded (default is `user`):
+
+```bash
+claude plugin install semia@semia --scope project
+```
+
 See [Discover and install plugins](https://code.claude.com/docs/en/discover-plugins)
-for the full UX.
+for the full UX and [Plugins reference](https://code.claude.com/docs/en/plugins-reference#cli-commands-reference)
+for the complete list of `claude plugin ...` subcommands.
 
 **OpenClaw** — install from ClawHub:
 
