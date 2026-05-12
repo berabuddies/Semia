@@ -2,6 +2,7 @@
 # Copyright 2026 berabuddies
 from __future__ import annotations
 
+import io
 import json
 import os
 import subprocess
@@ -1303,79 +1304,91 @@ class SynthesisPromptHardeningTests(unittest.TestCase):
             self.assertEqual(text.strip(), 'skill("demo").')
             self.assertFalse((run_dir / ".semia_codex_synthesis.txt").exists())
 
-    def test_openai_payload_sets_temperature_zero_by_default(self) -> None:
-        """Determinism: the OpenAI request body must carry temperature=0
-        unless the user explicitly opts out."""
+    def _fake_openai_response(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+            def read(self) -> bytes:
+                return b'{"output_text": "skill(\\"demo\\")."}'
+
+            @property
+            def headers(self) -> dict[str, str]:
+                return {"Content-Type": "application/json"}
+
+        return FakeResponse()
+
+    def _capture_openai_body(self, run_dir: Path, *, model: str) -> dict:
+        os.environ["OPENAI_API_KEY"] = "test-key"
+        os.environ["SEMIA_SYNTHESIS_N_ITERATIONS"] = "1"
+        with mock.patch(
+            "semia_cli.llm_providers.request.urlopen",
+            return_value=self._fake_openai_response(),
+        ) as urlopen:
+            llm_adapter.synthesize_facts(
+                run_dir,
+                provider="openai",
+                model=model,
+                validator=_perfect_validator,
+            )
+        return json_body(urlopen.call_args.args[0].data)
+
+    def test_openai_payload_sets_temperature_zero_for_non_reasoning_model(self) -> None:
+        """Determinism: chat models (gpt-4*, gpt-3.5*) accept temperature, so
+        the request must carry temperature=0 by default for repeatable output."""
 
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
             self._write_run_dir(run_dir)
-
-            class FakeResponse:
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, traceback):
-                    return False
-
-                def read(self) -> bytes:
-                    return b'{"output_text": "skill(\\"demo\\")."}'
-
-                @property
-                def headers(self) -> dict[str, str]:
-                    return {"Content-Type": "application/json"}
-
-            os.environ["OPENAI_API_KEY"] = "test-key"
-            os.environ["SEMIA_SYNTHESIS_N_ITERATIONS"] = "1"
-            with mock.patch(
-                "semia_cli.llm_providers.request.urlopen",
-                return_value=FakeResponse(),
-            ) as urlopen:
-                llm_adapter.synthesize_facts(
-                    run_dir,
-                    provider="openai",
-                    validator=_perfect_validator,
-                )
-
-            body = json_body(urlopen.call_args.args[0].data)
+            body = self._capture_openai_body(run_dir, model="gpt-4o")
             self.assertEqual(body.get("temperature"), 0)
 
-    def test_openai_temperature_can_be_disabled_with_empty_env(self) -> None:
-        """Reasoning models reject `temperature`; SEMIA_OPENAI_TEMPERATURE=""
-        must omit the field entirely."""
+    def test_openai_payload_omits_temperature_for_gpt5_reasoning_model(self) -> None:
+        """Regression: gpt-5* rejects `temperature` with HTTP 400. The default
+        model is gpt-5.5, so out-of-box `semia scan` must succeed without
+        forcing the user to set SEMIA_OPENAI_TEMPERATURE=."""
 
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
             self._write_run_dir(run_dir)
+            body = self._capture_openai_body(run_dir, model="gpt-5.5")
+            self.assertNotIn("temperature", body)
 
-            class FakeResponse:
-                def __enter__(self):
-                    return self
+    def test_openai_payload_omits_temperature_for_o_series(self) -> None:
+        """Sibling reasoning families (o1*, o3*, o4*) reject `temperature` for
+        the same reason as gpt-5*."""
 
-                def __exit__(self, exc_type, exc, traceback):
-                    return False
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self._write_run_dir(run_dir)
+            for model in ("o1-mini", "o3-mini", "o4-mini"):
+                with self.subTest(model=model):
+                    body = self._capture_openai_body(run_dir, model=model)
+                    self.assertNotIn("temperature", body)
 
-                def read(self) -> bytes:
-                    return b'{"output_text": "skill(\\"demo\\")."}'
+    def test_openai_temperature_env_can_force_send_on_reasoning_model(self) -> None:
+        """Explicit `SEMIA_OPENAI_TEMPERATURE=<num>` overrides the heuristic.
+        Power users who know their endpoint supports it can opt back in."""
 
-                @property
-                def headers(self) -> dict[str, str]:
-                    return {"Content-Type": "application/json"}
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self._write_run_dir(run_dir)
+            os.environ["SEMIA_OPENAI_TEMPERATURE"] = "0.7"
+            body = self._capture_openai_body(run_dir, model="gpt-5.5")
+            self.assertEqual(body.get("temperature"), 0.7)
 
-            os.environ["OPENAI_API_KEY"] = "test-key"
+    def test_openai_temperature_can_be_disabled_with_empty_env(self) -> None:
+        """Legacy compat: SEMIA_OPENAI_TEMPERATURE="" forces omit even on
+        models the heuristic would normally send for."""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self._write_run_dir(run_dir)
             os.environ["SEMIA_OPENAI_TEMPERATURE"] = ""
-            os.environ["SEMIA_SYNTHESIS_N_ITERATIONS"] = "1"
-            with mock.patch(
-                "semia_cli.llm_providers.request.urlopen",
-                return_value=FakeResponse(),
-            ) as urlopen:
-                llm_adapter.synthesize_facts(
-                    run_dir,
-                    provider="openai",
-                    validator=_perfect_validator,
-                )
-
-            body = json_body(urlopen.call_args.args[0].data)
+            body = self._capture_openai_body(run_dir, model="gpt-4o")
             self.assertNotIn("temperature", body)
 
     def test_claude_command_pins_empty_tools_arg(self) -> None:
@@ -1775,6 +1788,251 @@ class HttpErrorPathTests(unittest.TestCase):
         ):
             _run_responses("p", model="gpt-5.5", base_url="https://api.example/v1")
         self.assertIn("did not include", str(ctx.exception))
+
+
+class LlmConfigEdgeCaseTests(unittest.TestCase):
+    """Cover `llm_config.py` paths that the main provider tests do not
+    happen to exercise: unknown-provider rejection, env-var fallback
+    parsing (`_env_int` / `_env_float` / `_env_weights`), and the
+    `.env` file loader's line-by-line behavior.
+    """
+
+    def test_default_provider_rejects_unknown_name(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisConfigError, default_provider
+
+        with self.assertRaises(LlmSynthesisConfigError):
+            default_provider("not-a-real-provider")
+
+    def test_default_model_falls_through_for_unknown_provider(self) -> None:
+        from semia_cli.llm_config import DEFAULT_MODEL_RESPONSES, default_model
+
+        # Skip provider-name validation by reaching the fall-through branch
+        # in default_model directly. An unrecognized provider returns the
+        # OPENAI_MODEL env or the responses default.
+        with mock.patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(default_model(provider="unknown-but-set"), DEFAULT_MODEL_RESPONSES)
+
+    def test_env_int_parses_valid_value(self) -> None:
+        from semia_cli.llm_config import _env_int
+
+        with mock.patch.dict("os.environ", {"SEMIA_TEST_INT": "42"}, clear=True):
+            self.assertEqual(_env_int("SEMIA_TEST_INT", 7), 42)
+
+    def test_env_int_falls_back_on_malformed_value(self) -> None:
+        from semia_cli.llm_config import _env_int
+
+        with mock.patch.dict("os.environ", {"SEMIA_TEST_INT": "not-an-int"}, clear=True):
+            self.assertEqual(_env_int("SEMIA_TEST_INT", 7), 7)
+
+    def test_env_float_falls_back_on_malformed_value(self) -> None:
+        from semia_cli.llm_config import _env_float
+
+        with mock.patch.dict("os.environ", {"SEMIA_TEST_FLOAT": "nope"}, clear=True):
+            self.assertEqual(_env_float("SEMIA_TEST_FLOAT", 0.5), 0.5)
+
+    def test_env_weights_parses_triplet(self) -> None:
+        from semia_cli.llm_config import _env_weights
+
+        with mock.patch.dict("os.environ", {"SEMIA_TEST_WEIGHTS": "0.5, 0.3, 0.2"}, clear=True):
+            self.assertEqual(_env_weights("SEMIA_TEST_WEIGHTS", (0.0, 0.0, 0.0)), (0.5, 0.3, 0.2))
+
+    def test_env_weights_falls_back_on_wrong_arity(self) -> None:
+        from semia_cli.llm_config import _env_weights
+
+        with mock.patch.dict("os.environ", {"SEMIA_TEST_WEIGHTS": "0.5,0.3"}, clear=True):
+            self.assertEqual(_env_weights("SEMIA_TEST_WEIGHTS", (0.4, 0.4, 0.2)), (0.4, 0.4, 0.2))
+
+    def test_env_weights_falls_back_on_non_float(self) -> None:
+        from semia_cli.llm_config import _env_weights
+
+        with mock.patch.dict("os.environ", {"SEMIA_TEST_WEIGHTS": "0.5,bad,0.2"}, clear=True):
+            self.assertEqual(_env_weights("SEMIA_TEST_WEIGHTS", (0.4, 0.4, 0.2)), (0.4, 0.4, 0.2))
+
+    def test_parse_dotenv_value_strips_matching_quotes(self) -> None:
+        from semia_cli.llm_config import _parse_dotenv_value
+
+        self.assertEqual(_parse_dotenv_value('"quoted"'), "quoted")
+        self.assertEqual(_parse_dotenv_value("'single'"), "single")
+        self.assertEqual(_parse_dotenv_value('"a\\nb"'), "a\nb")
+        # Mismatched / single-quote-double does NOT strip.
+        self.assertEqual(_parse_dotenv_value('"unbalanced'), '"unbalanced')
+
+    def test_load_dotenv_parses_keys_and_skips_existing(self) -> None:
+        # Cover lines 230-242: comment skip, blank skip, `=`-less skip,
+        # `export ` prefix strip, empty-key skip, pre-set env skip, value
+        # parsing through `_parse_dotenv_value`.
+        from semia_cli.llm_config import _reset_dotenv_for_tests, load_dotenv
+
+        with tempfile.TemporaryDirectory() as td:
+            env_path = Path(td) / ".env"
+            env_path.write_text(
+                "# leading comment — should be skipped\n"
+                "\n"  # blank
+                "no_equals_sign\n"  # no `=` — skipped
+                "=no-key-here\n"  # empty key after strip — skipped
+                "FROM_DOTENV=hello\n"
+                'export FROM_EXPORT="exported"\n'
+                "ALREADY_SET=value\n",  # should NOT override existing
+                encoding="utf-8",
+            )
+            _reset_dotenv_for_tests()
+            with mock.patch.dict(
+                "os.environ",
+                {"ALREADY_SET": "original"},
+                clear=True,
+            ):
+                load_dotenv(env_path)
+                self.assertEqual(os.environ["FROM_DOTENV"], "hello")
+                self.assertEqual(os.environ["FROM_EXPORT"], "exported")
+                self.assertEqual(os.environ["ALREADY_SET"], "original")
+
+
+class SynthesisLoopEdgeTests(unittest.TestCase):
+    """Cover synthesis_loop.py paths that the main loop tests do not
+    happen to exercise: warning when ``--base-url`` is supplied for a
+    non-HTTP provider, resume failure when the candidate file is missing,
+    and `_validate_candidate` exception handling.
+    """
+
+    def test_validate_candidate_swallows_validator_exception(self) -> None:
+        from semia_cli.synthesis_loop import _validate_candidate
+
+        def boom(_run_dir: Path, _facts_path: Path) -> dict[str, object]:
+            raise OSError("disk gone")
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            facts = root / "synth.dl"
+            facts.write_text('skill("x").\n', encoding="utf-8")
+            valid, score, payload, diagnostics = _validate_candidate(
+                root,
+                facts,
+                boom,
+                score_weights=(0.5, 0.3, 0.2),
+            )
+
+        self.assertFalse(valid)
+        self.assertEqual(score, 0.0)
+        self.assertFalse(payload["program_valid"])
+        self.assertIn("OSError", payload["exception"])
+        self.assertIn("disk gone", diagnostics)
+
+    def test_validate_candidate_marks_invalid_when_errors_nonzero(self) -> None:
+        from semia_cli.synthesis_loop import _validate_candidate
+
+        def failing(_run_dir: Path, _facts_path: Path) -> dict[str, object]:
+            return {"program_valid": True, "errors": 3}
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            facts = root / "synth.dl"
+            facts.write_text('skill("x").\n', encoding="utf-8")
+            valid, score, _payload, _diag = _validate_candidate(
+                root,
+                facts,
+                failing,
+                score_weights=(0.5, 0.3, 0.2),
+            )
+
+        self.assertFalse(valid)
+        self.assertEqual(score, 0.0)
+
+    def test_synthesize_facts_warns_on_base_url_with_local_cli_provider(self) -> None:
+        # `--base-url` is only meaningful for HTTP providers. Supplying it
+        # with `codex` / `claude` should emit a stderr warning and
+        # otherwise proceed normally — exercises synthesis_loop.py line 50.
+        captured: dict[str, list[str]] = {"stderr": []}
+
+        def fake_call_provider(_root, _prompt, _config, _settings):
+            return 'skill("demo").\n'
+
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td)
+            (run_dir / "synthesis_prompt.md").write_text("Emit facts.", encoding="utf-8")
+            (run_dir / "prepared_skill.md").write_text("# Demo\n", encoding="utf-8")
+            with (
+                mock.patch.dict("os.environ", {"SEMIA_SYNTHESIS_N_ITERATIONS": "1"}, clear=True),
+                mock.patch(
+                    "semia_cli.synthesis_loop.call_provider",
+                    side_effect=fake_call_provider,
+                ),
+                mock.patch(
+                    "semia_cli.synthesis_loop._log_stderr",
+                    side_effect=lambda msg: captured["stderr"].append(msg),
+                ),
+            ):
+                llm_adapter.synthesize_facts(
+                    run_dir,
+                    provider="codex",
+                    model="test-model",
+                    base_url="https://this-should-warn.example",
+                    validator=_perfect_validator,
+                )
+
+        self.assertTrue(
+            any("--base-url is ignored" in msg for msg in captured["stderr"]),
+            f"expected base-url warning in stderr, got {captured['stderr']!r}",
+        )
+
+
+class CliMainExceptionHandlerTests(unittest.TestCase):
+    """Cover the three top-level except handlers in `semia_cli.main.main`.
+
+    Each catches a specific failure mode of the chosen subcommand handler
+    and translates it into a `semia: <message>\\n` stderr line + exit
+    code 2. They are the user's first signal that something went wrong;
+    a regression in any of them would surface as a stack trace instead.
+    """
+
+    @staticmethod
+    def _run(monkeypatch_target: str, exc: Exception) -> tuple[int, str]:
+        from semia_cli.main import main
+
+        stderr = io.StringIO()
+        old_stderr = sys.stderr
+        try:
+            sys.stderr = stderr
+            with (
+                mock.patch(monkeypatch_target, side_effect=exc),
+                tempfile.TemporaryDirectory() as td,
+            ):
+                skill = Path(td) / "skill.md"
+                # The `_prepare` handler runs `_existing_path` before
+                # reaching `core_adapter.prepare`; create a real file so
+                # the mocked exception is the only failure surface.
+                skill.write_text("# demo\n", encoding="utf-8", newline="")
+                code = main(["prepare", str(skill), "--out", str(Path(td) / "run")])
+        finally:
+            sys.stderr = old_stderr
+        return code, stderr.getvalue()
+
+    def test_core_api_error_becomes_exit_2(self) -> None:
+        from semia_cli.core_adapter import CoreApiError
+
+        code, err = self._run(
+            "semia_cli.core_adapter.prepare",
+            CoreApiError("core blew up"),
+        )
+        self.assertEqual(code, 2)
+        self.assertIn("core blew up", err)
+
+    def test_file_not_found_becomes_exit_2(self) -> None:
+        code, err = self._run(
+            "semia_cli.core_adapter.prepare",
+            FileNotFoundError("no skill at /missing"),
+        )
+        self.assertEqual(code, 2)
+        self.assertIn("no skill at /missing", err)
+
+    def test_llm_synthesis_error_becomes_exit_2(self) -> None:
+        from semia_cli.llm_config import LlmSynthesisError
+
+        code, err = self._run(
+            "semia_cli.core_adapter.prepare",
+            LlmSynthesisError("provider unreachable"),
+        )
+        self.assertEqual(code, 2)
+        self.assertIn("provider unreachable", err)
 
 
 if __name__ == "__main__":

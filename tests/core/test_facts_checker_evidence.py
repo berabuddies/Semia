@@ -465,5 +465,53 @@ class ValueAllowedActionReferenceTests(unittest.TestCase):
         self.assertNotIn("SDL018", codes)
 
 
+class FactParserMalformedInputTests(unittest.TestCase):
+    """Cover the parse-error paths in `parse_facts` / `parse_fact_line` /
+    `_parse_args`. Malformed facts can arrive from synthesis output, manual
+    edits, or hostile prompts; we need both strict mode (raise) and
+    non-strict mode (capture as `__parse_error__`) to behave predictably.
+    """
+
+    def test_unknown_relation_lands_in_unknown_facts(self) -> None:
+        program = parse_facts('not_in_schema("foo", "bar").\n')
+        relations = {fact.relation for fact in program.unknown_facts}
+        self.assertIn("not_in_schema", relations)
+
+    def test_missing_trailing_dot_captured_as_parse_error_in_lenient_mode(self) -> None:
+        program = parse_facts('skill("demo")\n')
+        self.assertTrue(any(f.relation == "__parse_error__" for f in program.unknown_facts))
+
+    def test_missing_trailing_dot_raises_in_strict_mode(self) -> None:
+        from semia_core.facts import FactParseError
+
+        with self.assertRaises(FactParseError):
+            parse_facts('skill("demo")\n', strict=True)
+
+    def test_missing_paren_shape_raises_parse_error(self) -> None:
+        from semia_core.facts import FactParseError
+
+        with self.assertRaises(FactParseError):
+            parse_facts("skill.\n", strict=True)
+
+    def test_invalid_relation_name_raises(self) -> None:
+        from semia_core.facts import FactParseError
+
+        with self.assertRaises(FactParseError):
+            parse_facts('1bad("a").\n', strict=True)
+
+    def test_empty_argument_list_parses_to_zero_args(self) -> None:
+        from semia_core.facts import parse_fact_line
+
+        fact = parse_fact_line("flag().")
+        self.assertEqual(fact.relation, "flag")
+        self.assertEqual(fact.args, ())
+
+    def test_unterminated_quoted_string_raises(self) -> None:
+        from semia_core.facts import FactParseError
+
+        with self.assertRaises(FactParseError):
+            parse_facts('skill("unterminated).\n', strict=True)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -161,6 +161,20 @@ def _run_with_retries(call: Callable[[], str], max_retries: int) -> str:
 # ---------------------------------------------------------------------------
 
 
+_OPENAI_REASONING_PREFIXES: tuple[str, ...] = ("gpt-5", "o1", "o3", "o4")
+
+
+def _openai_supports_temperature(model: str) -> bool:
+    """OpenAI reasoning families (gpt-5*, o1*, o3*, o4*) reject ``temperature``.
+
+    The Responses API returns HTTP 400 ``"'temperature' is not supported with
+    this model"`` if the field is present on those families. Older chat
+    models (gpt-4*, gpt-3.5*) still accept it.
+    """
+    name = model.lower()
+    return not any(name.startswith(prefix) for prefix in _OPENAI_REASONING_PREFIXES)
+
+
 def _run_responses(prompt: str, model: str | None, base_url: str) -> str:
     if not model:
         raise LlmSynthesisConfigError("responses provider requires a model name")
@@ -173,13 +187,20 @@ def _run_responses(prompt: str, model: str | None, base_url: str) -> str:
         "text": {"format": {"type": "text"}},
         "stream": True,
     }
-    # Determinism: security tooling should produce repeatable output where
-    # the endpoint allows it. Reasoning models that reject ``temperature``
-    # can opt out with ``SEMIA_OPENAI_TEMPERATURE=`` (empty string).
-    temperature_raw = os.environ.get("SEMIA_OPENAI_TEMPERATURE", "0")
-    if temperature_raw != "":
+    # Determinism: send ``temperature=0`` for models that accept it. Reasoning
+    # families (gpt-5*, o1*, o3*, o4*) reject the parameter entirely so we
+    # omit it for them. Override either direction with
+    # ``SEMIA_OPENAI_TEMPERATURE``:
+    #   unset    → auto (heuristic above)
+    #   ""       → force omit (legacy opt-out path)
+    #   "<num>"  → force send that value
+    env_value = os.environ.get("SEMIA_OPENAI_TEMPERATURE")
+    if env_value is None:
+        if _openai_supports_temperature(model):
+            payload["temperature"] = 0
+    elif env_value != "":
         with contextlib.suppress(ValueError):
-            payload["temperature"] = float(temperature_raw)
+            payload["temperature"] = float(env_value)
     req = request.Request(
         f"{base_url}/responses",
         data=json.dumps(payload).encode("utf-8"),

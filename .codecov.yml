@@ -1,0 +1,44 @@
+# Codecov configuration.
+#
+# The badge color is a gradient over `coverage.range`. The default
+# `70..100` makes anything below 95% look yellowish even when it's
+# objectively high — for a 4k-line project that intentionally skips
+# defensive guards and CLI text branches, narrowing the gradient to
+# `85..95` reflects reality: 95% is our intended ceiling, and the
+# badge reads bright green there.
+#
+# `precision` / `round` keep the displayed percentage stable across
+# minor runs.
+#
+# `status.project.threshold` lets a PR drop coverage by up to 0.5%
+# without failing the check, which absorbs noise from one-off changes
+# without hiding real regressions.
+
+coverage:
+  precision: 2
+  round: down
+  range: "85..95"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+        informational: false
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        informational: true
+
+# Skip ignored paths (tests, build scaffolding) from the report entirely.
+ignore:
+  - "tests/"
+  - ".github/"
+  - "build_backend/"
+  - "docs/"
+
+comment:
+  layout: "header, diff, flags, files"
+  behavior: default
+  require_changes: false
