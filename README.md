@@ -46,10 +46,17 @@ Install the plugin once. Each host has its own flow.
 
 **Codex** — pick either path:
 
-*Shell (one-liner):*
+*Shell (scripts and CI):*
 
 ```bash
 codex plugin marketplace add berabuddies/Semia
+```
+
+Then enable the plugin by appending to `~/.codex/config.toml`:
+
+```toml
+[plugins."semia@semia"]
+enabled = true
 ```
 
 *Interactive plugin manager inside the Codex CLI:*
@@ -58,9 +65,8 @@ codex plugin marketplace add berabuddies/Semia
 2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
 3. Press **←** (Left) to enter **Add marketplace**.
 4. Enter `berabuddies/Semia`.
-
-Either path leaves the marketplace registered; install `semia`
-from the panel or by re-running the relevant install command.
+5. Back in the plugin panel, toggle `semia` on from the
+   newly-added marketplace.
 
 **Claude Code** — pick either path:
 
@@ -332,11 +338,30 @@ workflow.
 
 **Codex** — pick either path.
 
+> `codex plugin` only exposes a `marketplace` subcommand (`add` /
+> `upgrade` / `remove`) — there is **no `codex plugin install`**.
+> "Installing" a plugin means enabling the
+> `[plugins."<name>@<marketplace>"]` toggle in `~/.codex/config.toml`,
+> either via the `/plugins` TUI panel or by editing the file directly.
+
 *Shell (scripts and CI):*
 
 ```bash
 codex plugin marketplace add berabuddies/Semia
 ```
+
+Then append the plugin toggle to `~/.codex/config.toml`:
+
+```toml
+[plugins."semia@semia"]
+enabled = true
+```
+
+The second `semia` is the marketplace identifier (the top-level
+`name` in this repo's `.agents/plugins/marketplace.json`); the first
+`semia` is the plugin entry under it. For a one-shot non-persistent
+run you can use `codex -c 'plugins."semia@semia".enabled=true'`
+instead of editing the file.
 
 *Interactive plugin manager inside the Codex CLI:*
 
@@ -344,16 +369,9 @@ codex plugin marketplace add berabuddies/Semia
 2. Inside Codex, input `/plugins` (plural — opens the plugin panel).
 3. Press **←** (Left) to enter **Add marketplace**.
 4. Enter `berabuddies/Semia`.
-5. Back in the plugin panel, install `semia` from the newly-added
-   marketplace.
-
-Headless setups can enable the plugin directly by adding the following to
-`~/.codex/config.toml`:
-
-```toml
-[plugins."semia@semia"]
-enabled = true
-```
+5. Back in the plugin panel, toggle `semia` on from the newly-added
+   marketplace (the panel writes the same `[plugins."semia@semia"]`
+   block into `~/.codex/config.toml` for you).
 
 **Claude Code** — pick either path.
 
