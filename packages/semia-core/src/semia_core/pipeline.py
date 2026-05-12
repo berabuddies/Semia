@@ -403,9 +403,36 @@ def report(
         return payload
     if fmt != "md":
         raise ValueError(f"unsupported report format: {fmt}")
-    markdown = render_markdown_report(audit)
+    evidence_by_atom = _evidence_by_atom_from_facts(root / ARTIFACT_SYNTHESIS_NORMALIZED) or (
+        _evidence_by_atom_from_facts(root / ARTIFACT_SYNTHESIZED_FACTS)
+    )
+    markdown = render_markdown_report(audit, evidence_by_atom=evidence_by_atom)
     (root / ARTIFACT_REPORT_MD).write_text(markdown, encoding="utf-8", newline="")
     return markdown
+
+
+def _evidence_by_atom_from_facts(facts_path: Path) -> dict[str, tuple[str, ...]]:
+    """Build atom_id → (evidence text, …) from a synthesized facts file.
+
+    Used by the Markdown renderer to inline source quotes under each detector
+    finding. Returns an empty dict if the file is missing or unparseable so
+    callers never need to guard the call site.
+    """
+
+    if not facts_path.exists():
+        return {}
+    try:
+        program = parse_facts(facts_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    bucket: dict[str, list[str]] = {}
+    for fact in program.evidence_text_facts:
+        if not fact.args:
+            continue
+        atom = fact.args[0]
+        text = fact.args[-1]
+        bucket.setdefault(atom, []).append(text)
+    return {atom: tuple(texts) for atom, texts in bucket.items()}
 
 
 def render_report(

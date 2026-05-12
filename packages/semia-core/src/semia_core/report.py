@@ -7,22 +7,23 @@ from __future__ import annotations
 from .artifacts import AuditReport, CheckIssue, DetectorResult, EvidenceAlignmentResult
 
 
-def render_markdown_report(report: AuditReport) -> str:
-    """Render a compact plugin-friendly Markdown report."""
+def render_markdown_report(
+    report: AuditReport,
+    *,
+    evidence_by_atom: dict[str, tuple[str, ...]] | None = None,
+) -> str:
+    """Render a compact plugin-friendly Markdown report.
+
+    The Markdown output is intentionally narrow: only the detector findings
+    plus their grounded source quotes. Structural-check, evidence-grounding,
+    and diagnostics metrics still live in the JSON/SARIF reports (consumed by
+    CI/programmatic tooling), and the LLM-driven recommendation is rendered
+    separately via :mod:`semia_cli.recommendation`.
+    """
 
     lines: list[str] = [f"# {report.title}", "", f"Source: `{report.source_id}`", ""]
-    if report.check_result is not None:
-        lines.extend(
-            _render_check_section(
-                report.check_result.issues, report.check_result.evidence_support_coverage
-            )
-        )
-    if report.evidence_result is not None:
-        lines.extend(_render_evidence_section(report.evidence_result))
-    if report.diagnostics:
-        lines.extend(_render_diagnostics_section(report.diagnostics))
     if report.detector_result is not None:
-        lines.extend(_render_detector_section(report.detector_result))
+        lines.extend(_render_detector_section(report.detector_result, evidence_by_atom or {}))
     if report.notes:
         lines.extend(["## Notes", ""])
         for note in report.notes:
@@ -78,7 +79,9 @@ def _render_diagnostics_section(diagnostics: dict[str, float] | None) -> list[st
     return ["## Quality Diagnostics", "", *bullets, ""]
 
 
-def _render_detector_section(result: DetectorResult) -> list[str]:
+def _render_detector_section(
+    result: DetectorResult, evidence_by_atom: dict[str, tuple[str, ...]]
+) -> list[str]:
     lines = ["## Detector", "", f"- Status: `{result.status}`"]
     if result.message:
         lines.append(f"- Message: {result.message}")
@@ -88,5 +91,13 @@ def _render_detector_section(result: DetectorResult) -> list[str]:
         fields = ", ".join(f"`{field}`" for field in finding.fields)
         suffix = f": {fields}" if fields else ""
         lines.append(f"- `{finding.label}`{suffix}")
+        for atom in finding.fields:
+            quotes = evidence_by_atom.get(atom, ())
+            seen: set[str] = set()
+            for quote in quotes:
+                if quote in seen:
+                    continue
+                seen.add(quote)
+                lines.append(f"  - `{atom}` evidence: {quote!r}")
     lines.append("")
     return lines

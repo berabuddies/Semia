@@ -153,6 +153,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="stop after prepare and print synthesis guidance",
     )
+    scan_parser.add_argument(
+        "--no-recommendation",
+        action="store_true",
+        help="skip the final LLM recommendation step (saves one LLM call)",
+    )
     scan_parser.set_defaults(handler=_scan)
 
     return parser
@@ -310,6 +315,37 @@ def _scan(args: argparse.Namespace, stdout: TextIO) -> None:
         print(report, file=stdout)
     else:
         _print_result(stdout, report, fallback=f"Rendered report for {run_dir}")
+    if not args.no_recommendation and not args.offline_baseline:
+        _run_recommendation(args, run_dir, stdout)
+
+
+def _run_recommendation(args: argparse.Namespace, run_dir: Path, stdout: TextIO) -> None:
+    """Final LLM pass: produce a plain-English verdict from skill + report.
+
+    Failures are reported on stderr but never abort the scan — the
+    deterministic findings already on disk are the source of truth; the
+    recommendation is a convenience layer on top.
+    """
+
+    from . import recommendation
+
+    stderr = getattr(args, "_stderr", sys.stderr)
+    try:
+        result = recommendation.recommend(
+            run_dir,
+            provider=args.provider,
+            model=args.model,
+            base_url=getattr(args, "base_url", None),
+        )
+    except (LlmSynthesisError, FileNotFoundError, CoreApiError) as exc:
+        print(f"semia: recommendation skipped — {exc}", file=stderr)
+        return
+    print("", file=stdout)
+    print("## Recommendation\n", file=stdout)
+    try:
+        print(Path(result["recommendation"]).read_text(encoding="utf-8"), file=stdout)
+    except OSError:
+        _print_result(stdout, result, fallback=f"Wrote recommendation for {run_dir}")
 
 
 def _existing_path(path: Path, label: str) -> Path:
