@@ -15,21 +15,5 @@
     "claude-code",
     "datalog",
     "sdl"
-  ],
-  "skills": [
-    {
-      "name": "semia",
-      "path": "./skills/semia/SKILL.md",
-      "description": "Run Semia's SDL V2 skill-audit workflow using the current Claude Code session for Stage 2 extraction."
-    }
-  ],
-  "commands": [
-    {
-      "name": "semia-scan",
-      "description": "Prepare, extract, check, detect, and report on an agent skill with Semia.",
-      "skill": "semia"
-    }
-  ],
-  "mcpServers": [],
-  "hooks": []
+  ]
 }
