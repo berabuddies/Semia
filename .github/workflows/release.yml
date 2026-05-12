@@ -175,7 +175,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/semia
+      url: https://pypi.org/p/semia-audit
 
     # `id-token: write` is required for PyPI Trusted Publishing (OIDC).
     permissions:
