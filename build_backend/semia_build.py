@@ -96,6 +96,7 @@ def build_editable(wheel_directory, config_settings=None, metadata_directory=Non
         f"{DIST_INFO}/METADATA": _metadata(),
         f"{DIST_INFO}/WHEEL": _wheel_file(),
         f"{DIST_INFO}/entry_points.txt": _entry_points(),
+        **_license_entries(),
     }
     _write_wheel(wheel, entries)
     return wheel.name
@@ -107,6 +108,7 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
         f"{DIST_INFO}/METADATA": _metadata(),
         f"{DIST_INFO}/WHEEL": _wheel_file(),
         f"{DIST_INFO}/entry_points.txt": _entry_points(),
+        **_license_entries(),
     }
     for src_root in SRC_ROOTS:
         for path in src_root.rglob("*"):
@@ -114,6 +116,19 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
                 entries[path.relative_to(src_root).as_posix()] = path.read_bytes()
     _write_wheel(wheel, entries)
     return wheel.name
+
+
+def _license_entries() -> dict[str, bytes]:
+    # PEP 639: every path declared as `License-File:` in METADATA must be
+    # bundled inside the wheel under `<dist>-<ver>.dist-info/licenses/<path>`.
+    # PyPI enforces this since 2025; mismatched declarations are rejected
+    # at upload time with HTTP 400.
+    out: dict[str, bytes] = {}
+    for path in _PROJECT.get("license-files") or []:
+        source = ROOT / path
+        if source.is_file():
+            out[f"{DIST_INFO}/licenses/{path}"] = source.read_bytes()
+    return out
 
 
 def build_sdist(sdist_directory, config_settings=None):
@@ -162,6 +177,10 @@ def _write_metadata_dir(metadata_directory: Path) -> str:
     (dist_info / "METADATA").write_text(_metadata(), encoding="utf-8")
     (dist_info / "WHEEL").write_text(_wheel_file(), encoding="utf-8")
     (dist_info / "entry_points.txt").write_text(_entry_points(), encoding="utf-8")
+    for rel, data in _license_entries().items():
+        target = metadata_directory / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
     return DIST_INFO
 
 
