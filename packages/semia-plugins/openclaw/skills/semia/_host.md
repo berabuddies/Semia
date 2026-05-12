@@ -9,8 +9,7 @@ metadata:
       bins:
         - semia
     install:
-      - id: uv
-        kind: uv
+      - kind: uv
         package: semia
         bins: [semia]
         label: Install Semia (uv tool)
