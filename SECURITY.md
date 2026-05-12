@@ -21,7 +21,11 @@ After 1.0 we will commit to a documented support window in this file.
 
 **Do not file public GitHub issues for security problems.**
 
-Email **security@riema.xyz** with:
+Use GitHub's private vulnerability reporting to open a draft advisory:
+[**Report a vulnerability**](https://github.com/berabuddies/Semia/security/advisories/new).
+The advisory is private between you and the maintainers until we publish it.
+
+Please include:
 
 - A description of the issue and its impact.
 - A minimal reproduction (steps, sample skill input, or PoC).
@@ -30,8 +34,8 @@ Email **security@riema.xyz** with:
   requires additional access (LLM credentials, local files, etc.).
 - Your name and any disclosure / credit preferences.
 
-If you need to send sensitive material encrypted, request our PGP key in your
-initial email and we will reply with the current key fingerprint.
+GitHub advisories support file attachments for PoCs and screenshots, so
+sensitive material can stay inside the private thread.
 
 ### Response targets
 
@@ -96,4 +100,5 @@ We will not pursue legal action against good-faith security research that:
 - Reports the issue privately and gives us a reasonable window to fix it
   before public disclosure.
 
-If in doubt, ask us first at security@riema.xyz.
+If in doubt, open a private advisory first via
+[Report a vulnerability](https://github.com/berabuddies/Semia/security/advisories/new).
