@@ -69,6 +69,7 @@ class SemiaCliTests(unittest.TestCase):
             model: str | None = None,
             base_url: str | None = None,
             validator=None,
+            **_kwargs: object,
         ) -> dict[str, object]:
             self.calls.append(
                 (

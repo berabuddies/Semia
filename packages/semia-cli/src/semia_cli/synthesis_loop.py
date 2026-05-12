@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,8 @@ from .llm_config import (
 from .llm_providers import call_provider, extract_facts
 from .synthesis_patch import apply_incremental_patch_with_report, parse_incremental_diff
 
+ProgressCallback = Callable[[dict[str, Any]], None]
+
 
 def synthesize_facts(
     run_dir: Path,
@@ -34,12 +38,17 @@ def synthesize_facts(
     model: str | None = None,
     base_url: str | None = None,
     validator: Validator,
+    on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Run the synthesis loop over ``run_dir``.
 
     ``provider`` picks the transport (``responses`` / ``anthropic`` /
     ``codex`` / ``claude``). ``model`` is a free-form name passed to the
     endpoint or CLI. ``base_url`` is honored only for HTTP providers.
+
+    ``on_progress`` is invoked once per loop milestone with a structured event
+    dict (``event`` key: ``started`` / ``iteration`` / ``stopped``). Caller
+    exceptions are swallowed so a broken progress sink cannot abort synthesis.
     """
 
     resolved_provider = default_provider(provider)
@@ -88,6 +97,19 @@ def synthesize_facts(
     plateau_counter = 0
     prev_accepted_score = best_score
     stop_reason = "exhausted"
+
+    _emit_progress(
+        on_progress,
+        {
+            "event": "started",
+            "max_iterations": settings.iterations,
+            "start_iteration": start_iteration,
+            "resumed_score": best_score,
+            "provider": config.provider,
+            "model": config.model,
+            "ceiling": settings.ceiling,
+        },
+    )
 
     for iteration in range(start_iteration, settings.iterations):
         parent = selected_iteration
@@ -162,6 +184,7 @@ def synthesize_facts(
                 candidate.rstrip() + "\n",
             )
 
+            improvement = 0.0
             if accepted:
                 improvement = (
                     score - prev_accepted_score if prev_accepted_score is not None else score
@@ -180,6 +203,24 @@ def synthesize_facts(
                     stop_reason = "ceiling"
                 elif plateau_counter >= settings.plateau_patience:
                     stop_reason = "plateau"
+
+            _emit_progress(
+                on_progress,
+                {
+                    "event": "iteration",
+                    "iteration": iteration,
+                    "attempt": attempt,
+                    "valid": True,
+                    "accepted": accepted,
+                    "score": score,
+                    "delta": improvement if accepted else None,
+                    "best_score": best_score,
+                    "ceiling": settings.ceiling,
+                    "plateau_counter": plateau_counter,
+                    "plateau_patience": settings.plateau_patience,
+                    "stop_reason": stop_reason if stop_reason in {"ceiling", "plateau"} else None,
+                },
+            )
 
             iterations = _dedupe_iterations(iterations)
             _write_synthesis_metadata(
@@ -209,6 +250,19 @@ def synthesize_facts(
                     validation=last_validation or {"diagnostics": last_diagnostics},
                     candidate_mode="invalid",
                 )
+            )
+            _emit_progress(
+                on_progress,
+                {
+                    "event": "iteration",
+                    "iteration": iteration,
+                    "attempt": settings.max_retries,
+                    "valid": False,
+                    "accepted": False,
+                    "score": None,
+                    "best_score": best_score,
+                    "diagnostics": last_diagnostics,
+                },
             )
             iterations = _dedupe_iterations(iterations)
             _write_synthesis_metadata(
@@ -244,6 +298,16 @@ def synthesize_facts(
         iterations=iterations,
         completed=True,
         stop_reason=stop_reason,
+    )
+    _emit_progress(
+        on_progress,
+        {
+            "event": "stopped",
+            "stop_reason": stop_reason,
+            "best_score": best_score,
+            "iterations": len(iterations),
+            "selected_iteration": selected_iteration,
+        },
     )
     return {
         "status": "synthesized",
@@ -380,6 +444,14 @@ def _log_stderr(message: str) -> None:
     if os.environ.get("SEMIA_QUIET") == "1":
         return
     print(message, file=sys.stderr)
+
+
+def _emit_progress(callback: ProgressCallback | None, event: dict[str, Any]) -> None:
+    """Best-effort progress dispatch — never raises into the synthesis loop."""
+    if callback is None:
+        return
+    with contextlib.suppress(Exception):
+        callback(event)
 
 
 def _score_payload(

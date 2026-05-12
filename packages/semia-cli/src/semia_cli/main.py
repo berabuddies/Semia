@@ -10,6 +10,7 @@ import json
 import os
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -193,13 +194,17 @@ def _synthesize(args: argparse.Namespace, stdout: TextIO) -> None:
             shutil.copyfile(facts_path, target)
         validation_path = target
     else:
-        result = llm_adapter.synthesize_facts(
-            run_dir,
-            provider=args.provider,
-            model=args.model,
-            base_url=getattr(args, "base_url", None),
-            validator=core_adapter.check,
-        )
+        stderr = getattr(args, "_stderr", sys.stderr)
+        synth_kwargs: dict[str, Any] = {
+            "provider": args.provider,
+            "model": args.model,
+            "base_url": getattr(args, "base_url", None),
+            "validator": core_adapter.check,
+        }
+        progress = _make_progress_callback(stderr)
+        if progress is not None:
+            synth_kwargs["on_progress"] = progress
+        result = llm_adapter.synthesize_facts(run_dir, **synth_kwargs)
         _print_result(stdout, result, fallback=f"Synthesized behavior map for {run_dir}")
         validation_path = target
     result = core_adapter.check(
@@ -272,15 +277,19 @@ def _scan(args: argparse.Namespace, stdout: TextIO) -> None:
                 print("Using the provider's configured default model.", file=stdout)
             if base_url:
                 print(f"Using base URL `{base_url}`.", file=stdout)
+            stderr = getattr(args, "_stderr", sys.stderr)
+            synth_kwargs: dict[str, Any] = {
+                "provider": provider,
+                "model": model,
+                "base_url": base_url,
+                "validator": core_adapter.check,
+            }
+            progress = _make_progress_callback(stderr)
+            if progress is not None:
+                synth_kwargs["on_progress"] = progress
             _print_result(
                 stdout,
-                llm_adapter.synthesize_facts(
-                    run_dir,
-                    provider=provider,
-                    model=model,
-                    base_url=base_url,
-                    validator=core_adapter.check,
-                ),
+                llm_adapter.synthesize_facts(run_dir, **synth_kwargs),
                 fallback=f"Synthesized behavior map for {run_dir}",
             )
 
@@ -557,12 +566,156 @@ def _read_json_optional(path: Path) -> dict[str, Any] | None:
 def _print_result(stdout: TextIO, result: Any, fallback: str) -> None:
     if result is None:
         print(fallback, file=stdout)
-    elif isinstance(result, str):
+        return
+    if isinstance(result, str):
         print(result, file=stdout)
-    elif isinstance(result, bytes):
+        return
+    if isinstance(result, bytes):
         print(result.decode("utf-8"), file=stdout)
-    else:
-        print(json.dumps(_jsonable(result), indent=2, sort_keys=True), file=stdout)
+        return
+    if _wants_human_output(stdout):
+        summary = _summarize_result(result)
+        if summary is not None:
+            print(summary, file=stdout)
+            return
+    print(json.dumps(_jsonable(result), indent=2, sort_keys=True), file=stdout)
+
+
+def _wants_human_output(stream: TextIO) -> bool:
+    """Pretty-print to TTYs unless the caller forces JSON via ``SEMIA_JSON=1``."""
+    if os.environ.get("SEMIA_JSON") == "1":
+        return False
+    return bool(getattr(stream, "isatty", lambda: False)())
+
+
+def _summarize_result(result: Any) -> str | None:
+    """Compact one-line summary for known result shapes; ``None`` falls back to JSON."""
+    if not isinstance(result, dict):
+        return None
+    status = result.get("status")
+    if status == "prepared":
+        units = result.get("semantic_units")
+        run_dir = result.get("run_dir")
+        run_str = f" → {_short_path(run_dir)}" if run_dir else ""
+        unit_str = f"{units} semantic unit(s)" if units is not None else "skill"
+        return f"Prepared {unit_str}{run_str}"
+    if status == "synthesized":
+        score = result.get("score")
+        iters = result.get("iterations")
+        stop = result.get("stop_reason")
+        provider = result.get("provider")
+        model = result.get("model")
+        score_s = f"{score:.3f}" if isinstance(score, int | float) else "n/a"
+        bits = [f"score {score_s}"]
+        if iters is not None:
+            bits.append(f"{iters} iter")
+        if stop:
+            bits.append(f"stop={stop}")
+        if provider:
+            bits.append(f"provider={provider}")
+        if model:
+            bits.append(f"model={model}")
+        return "Synthesized: " + ", ".join(bits)
+    if status == "baseline_synthesized":
+        mode = result.get("mode") or "baseline"
+        return f"Wrote baseline behavior map (mode={mode})"
+    if status in {"checked", "check_failed"}:
+        valid = "valid" if result.get("program_valid") else "INVALID"
+        errors = result.get("errors", 0)
+        warnings = result.get("warnings", 0)
+        match = result.get("evidence_match_rate")
+        match_s = f"{match:.3f}" if isinstance(match, int | float) else "n/a"
+        return (
+            f"Checked: {valid}, errors={errors}, warnings={warnings}, " f"evidence_match={match_s}"
+        )
+    if status == "detected":
+        findings = result.get("findings")
+        backend = result.get("backend")
+        suffix = f" (backend={backend})" if backend else ""
+        if findings is None:
+            return f"Detected{suffix}"
+        return f"Detected: {findings} finding(s){suffix}"
+    if status == "aligned":
+        match = result.get("evidence_match_rate")
+        match_s = f"{match:.3f}" if isinstance(match, int | float) else "n/a"
+        return f"Aligned: evidence_match_rate={match_s}"
+    return None
+
+
+def _short_path(value: Any) -> str:
+    """Render ``value`` relative to CWD when possible; absolute otherwise."""
+    text = str(value)
+    try:
+        return str(Path(text).relative_to(Path.cwd()))
+    except (ValueError, TypeError, OSError):
+        return text
+
+
+def _make_progress_callback(stderr: TextIO) -> Callable[[dict[str, Any]], None] | None:
+    """Return a stderr progress writer, or ``None`` to skip progress entirely.
+
+    Disabled when ``SEMIA_QUIET=1`` or ``SEMIA_PROGRESS=0``. Forced on when
+    ``SEMIA_PROGRESS=1``. Otherwise enabled iff stderr is a TTY — mirrors what
+    a human running ``semia`` interactively would expect, while leaving piped
+    or test invocations silent.
+    """
+    if os.environ.get("SEMIA_QUIET") == "1":
+        return None
+    forced = os.environ.get("SEMIA_PROGRESS")
+    if forced == "0":
+        return None
+    if forced != "1" and not getattr(stderr, "isatty", lambda: False)():
+        return None
+
+    def emit(event: dict[str, Any]) -> None:
+        line = _format_progress_event(event)
+        if line is None:
+            return
+        print(line, file=stderr, flush=True)
+
+    return emit
+
+
+def _format_progress_event(event: dict[str, Any]) -> str | None:
+    kind = event.get("event")
+    if kind == "started":
+        max_iters = event.get("max_iterations")
+        provider = event.get("provider")
+        model = event.get("model")
+        bits = []
+        if max_iters is not None:
+            bits.append(f"up to {max_iters} iter")
+        if provider:
+            bits.append(f"provider={provider}")
+        if model:
+            bits.append(f"model={model}")
+        suffix = f" ({', '.join(bits)})" if bits else ""
+        return f"  synthesizing{suffix}…"
+    if kind == "iteration":
+        iter_n = event.get("iteration")
+        if not event.get("valid"):
+            return f"  iter {iter_n}: invalid candidate, retrying…"
+        score = event.get("score")
+        score_s = f"{score:.3f}" if isinstance(score, int | float) else "n/a"
+        if event.get("accepted"):
+            delta = event.get("delta")
+            delta_s = f" ({delta:+.3f})" if isinstance(delta, int | float) and delta else ""
+            best = event.get("best_score")
+            best_s = f", best {best:.3f}" if isinstance(best, int | float) and best != score else ""
+            stop = event.get("stop_reason")
+            stop_s = f" — {stop}" if stop else ""
+            return f"  iter {iter_n}: accepted, score {score_s}{delta_s}{best_s}{stop_s}"
+        best = event.get("best_score")
+        best_s = f", best {best:.3f}" if isinstance(best, int | float) else ""
+        return f"  iter {iter_n}: rejected, score {score_s}{best_s}"
+    if kind == "stopped":
+        reason = event.get("stop_reason") or "done"
+        best = event.get("best_score")
+        best_s = f", best {best:.3f}" if isinstance(best, int | float) else ""
+        iters = event.get("iterations")
+        iters_s = f", {iters} iter total" if iters is not None else ""
+        return f"  stopped: {reason}{best_s}{iters_s}"
+    return None
 
 
 def _jsonable(value: Any) -> Any:
