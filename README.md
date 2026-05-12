@@ -76,6 +76,7 @@ enabled = true
 
 ```bash
 claude plugin marketplace add berabuddies/Semia
+claude plugin install semia@semia
 ```
 
 *Interactive plugin manager inside the Claude Code CLI:*
