@@ -32,7 +32,7 @@ Pick whichever fits how you already work.
 ### As a CLI
 
 ```bash
-pip install semia
+pip install semia-audit
 semia scan ./some-skill
 ```
 
@@ -336,7 +336,7 @@ semia scan ./some-skill --offline-baseline
 
 The Codex and Claude Code plugin bundles under `packages/semia-plugins/<host>/`
 ship with a self-contained `bin/semia.pyz` zipapp, so they work out of the
-box without a separate `pip install semia`. The OpenClaw skill
+box without a separate `pip install semia-audit`. The OpenClaw skill
 relies on the published `semia` CLI on `PATH` (ClawHub provisions it via
 `uv tool install`). Installing the Python package as well is recommended if
 you want `semia` available as a normal shell command alongside the in-host
@@ -416,11 +416,11 @@ openclaw plugins install clawhub:semia
 ```
 
 ClawHub will install the `semia` CLI on demand via `uv tool install
-semia` (declared in the skill's `install` block). If you prefer to
+semia-audit` (declared in the skill's `install` block). If you prefer to
 pre-provision it yourself:
 
 ```bash
-uv tool install semia   # or: pip install semia
+uv tool install semia-audit   # or: pip install semia-audit
 openclaw plugins install clawhub:semia
 ```
 

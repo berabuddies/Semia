@@ -10,7 +10,7 @@ metadata:
         - semia
     install:
       - kind: uv
-        package: semia
+        package: semia-audit
         bins: [semia]
         label: Install Semia (uv tool)
 ---
@@ -28,7 +28,7 @@ The skill shells out to the `semia` CLI. ClawHub installs it for you via the
 `install` block above. If you want to do it manually:
 
 ```bash
-uv tool install semia   # or: pip install semia
+uv tool install semia-audit   # or: pip install semia-audit
 ```
 
 `semia` is pure Python (≥3.11) with no third-party runtime dependencies. It

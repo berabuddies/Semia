@@ -1442,7 +1442,7 @@ class ExtractFactsHardeningTests(unittest.TestCase):
         response = (
             "Here is how to install:\n\n"
             "```bash\n"
-            "pip install semia\n"
+            "pip install semia-audit\n"
             "```\n\n"
             "And the facts:\n\n"
             "```datalog\n"

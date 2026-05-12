@@ -49,7 +49,7 @@ release pipeline.
 - `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` env vars route HTTP providers
   at compatible endpoints (DeepSeek, OpenRouter, vLLM, local proxies).
 - Anthropic Messages provider uses raw `urllib` HTTP streaming with no
-  third-party SDK dependency — `pip install semia` is enough.
+  third-party SDK dependency — `pip install semia-audit` is enough.
 - `LlmSynthesisConfigError` non-retryable exception so missing API keys
   or binaries surface immediately instead of consuming the retry budget.
 - Review loop with plateau detection and incremental Datalog patch

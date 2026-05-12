@@ -79,7 +79,7 @@ The OpenClaw integration is distributed as a *skill* (not a code plugin) via
 the official [ClawHub](https://github.com/openclaw/clawhub) registry. The
 skill body is `packages/semia-plugins/openclaw/skills/semia/`; its
 frontmatter declares `requires.bins: [semia]` plus an
-`install: [{kind: uv, package: semia}]` block so ClawHub can
+`install: [{kind: uv, package: semia-audit}]` block so ClawHub can
 provision the `semia` CLI on first use.
 
 ### Automated publish (default)

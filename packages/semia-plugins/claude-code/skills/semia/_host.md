@@ -12,7 +12,7 @@ user explicitly requests otherwise.
 
 ## Running the Semia CLI
 
-Prefer `semia` on `PATH` (installed via `pip install semia`). If it
+Prefer `semia` on `PATH` (installed via `pip install semia-audit`). If it
 is not available, this plugin bundles a self-contained zipapp at
 `<plugin-root>/bin/semia.pyz`. Invoke it with the user's `python3` (≥3.11):
 

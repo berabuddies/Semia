@@ -143,7 +143,7 @@ You also get:
 Install once:
 
 ```bash
-pip install semia
+pip install semia-audit
 ```
 
 Audit any skill directory:

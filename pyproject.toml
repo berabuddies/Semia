@@ -4,7 +4,7 @@ build-backend = "semia_build"
 backend-path = ["build_backend"]
 
 [project]
-name = "semia"
+name = "semia-audit"
 version = "0.1.0"
 description = "Skill Behavior Mapping for AI agent skill auditing."
 readme = "README.md"
