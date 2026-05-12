@@ -69,5 +69,5 @@ that release.
 
 ## Contact
 
-Questions about this policy: privacy@riema.xyz.
+Questions about this policy: hongbo@riema.xyz.
 Security reports: see [SECURITY.md](SECURITY.md).

@@ -9,7 +9,7 @@ grant any rights to use the Marks (see Section 6 of the license).
 
 This file describes the trademark practices we want to enforce in addition
 to the Apache-2.0 grant. It is not legal advice. If you are unsure whether
-your intended use is permitted, contact us at **trademarks@riema.xyz**
+your intended use is permitted, contact us at **hongbo@riema.xyz**
 before proceeding.
 
 ## What you may do without permission
@@ -55,7 +55,7 @@ If you fork Semia and distribute changes, please:
 ## Reporting misuse
 
 If you see use of the Marks that may violate this policy, email
-**trademarks@riema.xyz** with the URL or screenshot and a short note. We
+**hongbo@riema.xyz** with the URL or screenshot and a short note. We
 appreciate the help — and we are usually willing to grant permission for
 reasonable use cases when contacted in advance.
 
