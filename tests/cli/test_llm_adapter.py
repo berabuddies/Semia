@@ -1611,7 +1611,9 @@ class RunSubprocessErrorTests(unittest.TestCase):
                 env={"A": "1"},
             )
         self.assertEqual(result.stdout, "ok")
-        self.assertEqual(captured["cwd"], "/tmp")
+        # `str(Path("/tmp"))` is "/tmp" on POSIX but "\\tmp" on Windows;
+        # compare against the host-normalised form rather than a literal.
+        self.assertEqual(captured["cwd"], str(Path("/tmp")))
         self.assertEqual(captured["env"], {"A": "1"})
         self.assertEqual(captured["input"], "data")
 
