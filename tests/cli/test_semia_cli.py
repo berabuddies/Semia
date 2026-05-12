@@ -120,6 +120,45 @@ class SemiaCliTests(unittest.TestCase):
             self.assertEqual(self.calls[0][1]["skill_path"], skill_path.resolve())
             self.assertEqual(self.calls[0][1]["out_dir"], run_dir.resolve())
 
+    def test_prepare_defaults_run_dir_to_dot_semia_runs_slug(self) -> None:
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_path = Path(tmp) / "some-skill"
+            skill_path.mkdir()
+            previous_cwd = Path.cwd()
+            os.chdir(tmp)
+            try:
+                code, out, err = self._run(["prepare", str(skill_path)])
+            finally:
+                os.chdir(previous_cwd)
+
+            self.assertEqual(code, 0, err)
+            expected = (Path(tmp) / ".semia/runs/some-skill").resolve()
+            self.assertEqual(self.calls[0][1]["out_dir"], expected)
+            self.assertIn(f"Using default run dir: {expected}", out)
+
+    def test_scan_defaults_run_dir_to_dot_semia_runs_slug(self) -> None:
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_path = Path(tmp) / "another-skill"
+            skill_path.mkdir()
+            previous_cwd = Path.cwd()
+            os.chdir(tmp)
+            try:
+                code, out, err = self._run(
+                    ["scan", str(skill_path), "--offline-baseline", "--prepare-only"]
+                )
+            finally:
+                os.chdir(previous_cwd)
+
+            self.assertEqual(code, 0, err)
+            expected = (Path(tmp) / ".semia/runs/another-skill").resolve()
+            self.assertEqual(self.calls[0][0], "prepare")
+            self.assertEqual(self.calls[0][1]["out_dir"], expected)
+            self.assertIn(f"Using default run dir: {expected}", out)
+
     def test_synthesize_uses_default_run_dir_and_aligns_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp) / "run"

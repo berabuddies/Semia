@@ -71,7 +71,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="prepare a Semia run directory from a skill source",
     )
     prepare_parser.add_argument("skill_path", type=Path)
-    prepare_parser.add_argument("--out", dest="run_dir", required=True, type=Path)
+    prepare_parser.add_argument(
+        "--out",
+        dest="run_dir",
+        type=Path,
+        help="run directory (default: .semia/runs/<skill-slug>, where slug is "
+        "the skill directory name or the skill file stem)",
+    )
     prepare_parser.set_defaults(handler=_prepare)
 
     synthesize_parser = subparsers.add_parser(
@@ -120,7 +126,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="prepare, synthesize, detect, and render a report",
     )
     scan_parser.add_argument("skill_path", type=Path)
-    scan_parser.add_argument("--out", dest="run_dir", required=True, type=Path)
+    scan_parser.add_argument(
+        "--out",
+        dest="run_dir",
+        type=Path,
+        help="run directory (default: .semia/runs/<skill-slug>, where slug is "
+        "the skill directory name or the skill file stem)",
+    )
     scan_parser.add_argument(
         "--facts",
         dest="facts_path",
@@ -147,7 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _prepare(args: argparse.Namespace, stdout: TextIO) -> None:
     skill_path = _existing_path(args.skill_path, "skill_path")
-    run_dir = args.run_dir.resolve()
+    run_dir = _resolve_run_dir(args.run_dir, skill_path, stdout)
     result = core_adapter.prepare(skill_path, run_dir)
     _print_result(stdout, result, fallback=f"Prepared Semia run at {run_dir}")
 
@@ -214,7 +226,7 @@ def _report(args: argparse.Namespace, stdout: TextIO) -> None:
 
 def _scan(args: argparse.Namespace, stdout: TextIO) -> None:
     skill_path = _existing_path(args.skill_path, "skill_path")
-    run_dir = args.run_dir.resolve()
+    run_dir = _resolve_run_dir(args.run_dir, skill_path, stdout)
     result = core_adapter.prepare(skill_path, run_dir)
     _print_result(stdout, result, fallback=f"Prepared Semia run at {run_dir}")
     if args.prepare_only:
@@ -296,6 +308,15 @@ def _existing_path(path: Path, label: str) -> Path:
     if not resolved.exists():
         raise FileNotFoundError(f"{label} does not exist: {resolved}")
     return resolved
+
+
+def _resolve_run_dir(run_dir: Path | None, skill_path: Path, stdout: TextIO) -> Path:
+    if run_dir is not None:
+        return run_dir.resolve()
+    slug = skill_path.name if skill_path.is_dir() else skill_path.stem
+    default = (Path(".semia/runs") / slug).resolve()
+    print(f"Using default run dir: {default}", file=stdout)
+    return default
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
