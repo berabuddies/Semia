@@ -149,10 +149,11 @@ pip install semia
 Audit any skill directory:
 
 ```bash
-semia scan ./path/to/skill --out .semia/runs/skill-demo
+semia scan ./path/to/skill
 ```
 
-Open `.semia/runs/skill-demo/report.md` to read the findings, or attach
+Open `.semia/runs/skill/report.md` (slug taken from the skill directory
+name) to read the findings, or attach
 `report.sarif.json` to a GitHub PR via [Code Scanning][code-scanning] so
 reviewers see annotations directly on the changed lines.
 

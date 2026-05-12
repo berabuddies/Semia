@@ -33,12 +33,14 @@ Pick whichever fits how you already work.
 
 ```bash
 pip install semia
-semia scan ./some-skill --out .semia/runs/some-skill
+semia scan ./some-skill
 ```
 
 `scan` does prepare → synthesize (via your configured LLM provider) →
-detect → report in one shot. You'll need an LLM provider configured first —
-see [Set up an LLM provider](#set-up-an-llm-provider) below.
+detect → report in one shot. Output lands under
+`.semia/runs/<skill-slug>/` by default — pass `--out <path>` to override.
+You'll need an LLM provider configured first — see
+[Set up an LLM provider](#set-up-an-llm-provider) below.
 
 ### Inside Codex, Claude Code, or OpenClaw
 
@@ -275,19 +277,22 @@ Switch with flags:
 
 ```bash
 # Default: OpenAI Responses against api.openai.com
-semia scan ./some-skill --out .semia/runs/some-skill
+semia scan ./some-skill
 
 # Anthropic Messages against api.anthropic.com
-semia scan ./some-skill --out .semia/runs/some-skill --provider anthropic
+semia scan ./some-skill --provider anthropic
 
 # Point the responses format at a different endpoint (DeepSeek, OpenRouter, vLLM, …)
-semia scan ./some-skill --out .semia/runs/some-skill \
+semia scan ./some-skill \
   --provider responses --model deepseek-v4 \
   --base-url https://api.deepseek.com/v1
 
 # Use the locally-installed Claude Code CLI (model is the only knob)
-semia scan ./some-skill --out .semia/runs/some-skill --provider claude --model claude-opus-4-7
+semia scan ./some-skill --provider claude --model claude-opus-4-7
 ```
+
+Each of these lands output under `.semia/runs/some-skill/`. Pass
+`--out <path>` if you want a custom run directory.
 
 ### Most common environment variables
 
@@ -310,18 +315,18 @@ For full synthesis tuning (`SEMIA_SYNTHESIS_*`), see the rest of
 
 **Stop after deterministic preparation:**
 ```bash
-semia scan ./some-skill --out .semia/runs/some-skill --prepare-only
+semia scan ./some-skill --prepare-only
 ```
 
 **Reuse facts from a prior run or an agent session:**
 ```bash
-semia scan ./some-skill --out .semia/runs/some-skill --facts synthesized_facts.dl
+semia scan ./some-skill --facts synthesized_facts.dl
 semia report .semia/runs/some-skill --format sarif
 ```
 
 **CI smoke test (no LLM call):**
 ```bash
-semia scan ./some-skill --out .semia/runs/some-skill --offline-baseline
+semia scan ./some-skill --offline-baseline
 ```
 > `--offline-baseline` is a conservative non-LLM fallback for offline demos
 > and CI smoke tests. It is **not** a substitute for real synthesis.

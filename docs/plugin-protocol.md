@@ -57,9 +57,13 @@ When a synthesized fact file already exists, the shell command can run the
 deterministic tail directly:
 
 ```bash
-semia scan ./some-skill --out .semia/runs/some-skill --facts synthesized_facts.dl
+semia scan ./some-skill --facts synthesized_facts.dl
 semia report .semia/runs/some-skill --format sarif
 ```
+
+Both `prepare` and `scan` default `--out` to `.semia/runs/<skill-slug>/`
+when omitted (slug = skill directory name, or skill file stem for
+single-file skills). Pass `--out <path>` to override.
 
 ## Step Responsibilities
 
