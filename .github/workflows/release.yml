@@ -57,9 +57,12 @@ jobs:
 
     # `id-token: write` and `attestations: write` are required so
     # actions/attest-build-provenance can mint and store a SLSA provenance
-    # attestation for each built artifact.
+    # attestation for each built artifact. `contents: write` + `actions: read`
+    # let anchore/sbom-action attach the CycloneDX SBOM to the GitHub Release
+    # whose tag triggered this run.
     permissions:
-      contents: read
+      contents: write
+      actions: read
       id-token: write
       attestations: write
 
