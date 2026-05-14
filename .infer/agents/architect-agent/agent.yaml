@@ -1,0 +1,3 @@
+capabilities: [plan_architecture, decompose_work, review_design]
+tools: [filesystem, github_api]
+data_sources: [ci_status_read]
