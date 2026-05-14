@@ -1,0 +1,3 @@
+capabilities: [run_tests, analyze_coverage, review_quality]
+tools: [terminal]
+data_sources: []
