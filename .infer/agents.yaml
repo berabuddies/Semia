@@ -1,0 +1,13 @@
+agents:
+  architect-agent:
+    description: "Plans architecture, decomposes work, and reviews designs."
+    owners: [platform]
+  dev-agent:
+    description: "Implements code changes and refactors existing modules."
+    owners: [platform]
+  qa-agent:
+    description: "Runs tests, checks coverage, and reviews quality risks."
+    owners: [platform]
+  devops-agent:
+    description: "Deploys, monitors, and coordinates rollback decisions."
+    owners: [platform]
