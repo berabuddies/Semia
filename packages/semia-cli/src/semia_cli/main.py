@@ -160,6 +160,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan_parser.set_defaults(handler=_scan)
 
+    repair_parser = subparsers.add_parser(
+        "repair",
+        help="generate SKILL.md patches to fix detected violations",
+    )
+    repair_parser.add_argument(
+        "target",
+        type=Path,
+        help="either a skill directory (runs scan first) or an existing run directory "
+        "(with --from-scan)",
+    )
+    repair_parser.add_argument(
+        "--from-scan",
+        action="store_true",
+        help="treat target as an existing run directory (skip scan)",
+    )
+    repair_parser.add_argument(
+        "--trace-only",
+        action="store_true",
+        help="trace findings to source but do not generate patches",
+    )
+    _add_llm_options(repair_parser)
+    repair_parser.set_defaults(handler=_repair)
+
     return parser
 
 
@@ -346,6 +369,61 @@ def _run_recommendation(args: argparse.Namespace, run_dir: Path, stdout: TextIO)
         print(Path(result["recommendation"]).read_text(encoding="utf-8"), file=stdout)
     except OSError:
         _print_result(stdout, result, fallback=f"Wrote recommendation for {run_dir}")
+
+
+def _repair(args: argparse.Namespace, stdout: TextIO) -> None:
+    from . import repair as repair_mod
+
+    target = _existing_path(args.target, "target")
+
+    if args.from_scan:
+        # Target is an existing run directory
+        run_dir = target
+    else:
+        # Target is a skill directory — run scan first
+        skill_path = target
+        run_dir = _resolve_run_dir(None, skill_path, stdout)
+        print(f"\nScanning {skill_path}...", file=stdout)
+        result = core_adapter.prepare(skill_path, run_dir)
+        _print_result(stdout, result, fallback=f"Prepared at {run_dir}")
+
+        # Synthesize
+        if not (run_dir / SYNTHESIZED_FACTS).exists():
+            stderr = getattr(args, "_stderr", sys.stderr)
+            synth_kwargs: dict[str, Any] = {
+                "provider": args.provider,
+                "model": args.model,
+                "base_url": getattr(args, "base_url", None),
+                "validator": core_adapter.check,
+            }
+            progress = _make_progress_callback(stderr)
+            if progress is not None:
+                synth_kwargs["on_progress"] = progress
+            _print_result(
+                stdout,
+                llm_adapter.synthesize_facts(run_dir, **synth_kwargs),
+                fallback=f"Synthesized for {run_dir}",
+            )
+
+        # Check + detect
+        _print_result(
+            stdout,
+            core_adapter.check(run_dir, run_dir / SYNTHESIZED_FACTS),
+            fallback=f"Validated for {run_dir}",
+        )
+        _print_result(stdout, core_adapter.detect(run_dir), fallback=f"Detected for {run_dir}")
+
+    # Run repair
+    print("", file=stdout)
+    result = repair_mod.repair(
+        run_dir,
+        provider=args.provider,
+        model=args.model,
+        base_url=getattr(args, "base_url", None),
+        trace_only=args.trace_only,
+        stdout=stdout,
+    )
+    _print_result(stdout, result, fallback="Repair complete")
 
 
 def _existing_path(path: Path, label: str) -> Path:

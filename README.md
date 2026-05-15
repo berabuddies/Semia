@@ -102,6 +102,22 @@ Then in any chat with the host agent just ask:
 The host agent itself acts as the synthesize step — **no API key needed**.
 The bundled `semia.pyz` handles prepare / detect / report deterministically.
 
+### Fix what Semia finds
+
+```bash
+semia repair .semia/runs/some-skill --from-scan
+```
+
+`repair` reads the findings and synthesized facts from an existing scan,
+traces each violation back through the Datalog rules to identify the root
+cause, then calls an LLM to generate a SKILL.md patch — either fixing
+the problematic content directly or adding specific security constraints.
+
+```bash
+# Or scan + repair in one shot:
+semia repair ./some-skill
+```
+
 ### Outputs
 
 You get `report.md` — findings ranked by severity, every one tied to a
@@ -173,6 +189,8 @@ skill PR.
 | `prepare_units.json`      | reference units the evidence text aligns against   |
 | `synthesis_metadata.json` | provider, model, retries, score, stop reason       |
 | `run_manifest.json`       | end-to-end manifest of the run                     |
+| `repair_result.json`      | repair outcomes (when `semia repair` is run)       |
+| `patched/SKILL.md`        | the repaired SKILL.md (when `semia repair` is run) |
 
 </details>
 
@@ -207,6 +225,13 @@ surfaces before you install.
 3. **Detect** — a Datalog evaluator runs the bundled SDL rules over the
    facts to flag risky combinations (e.g. *secret read → network write*).
 4. **Report** — render Markdown for humans and SARIF for CI.
+5. **Repair** *(optional)* — trace each finding back through the Datalog
+   rules to identify which facts caused it, then call an LLM to generate
+   a SKILL.md patch. The patch either fixes the problematic content
+   (e.g. replacing a hardcoded IP) or adds specific security constraints
+   (e.g. "Never execute `blockchain.send_transaction()` without user
+   confirmation"). The tracer and prompt builder are deterministic; only
+   the patch generation step calls the LLM.
 
 Detection runs through a built-in pure-Python Datalog evaluator by default,
 so **no external binary is required**. If [Soufflé](https://souffle-lang.github.io/)
@@ -331,6 +356,18 @@ semia scan ./some-skill --offline-baseline
 ```
 > `--offline-baseline` is a conservative non-LLM fallback for offline demos
 > and CI smoke tests. It is **not** a substitute for real synthesis.
+
+**Repair a scanned skill (generate SKILL.md patch):**
+```bash
+# From an existing scan run:
+semia repair .semia/runs/some-skill --from-scan
+
+# Scan + repair in one shot:
+semia repair ./some-skill
+
+# Trace only (see what to fix, without generating patches):
+semia repair .semia/runs/some-skill --from-scan --trace-only
+```
 
 ## Install as a host plugin
 
