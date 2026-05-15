@@ -5,6 +5,25 @@ All notable changes to Semia are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-05-15
+
+### Added
+
+- `semia repair`, a repair workflow that traces detector findings back
+  through Datalog rules and synthesized facts, then generates SKILL.md-only
+  patches for flagged skills.
+- `--from-scan` and `--trace-only` repair modes so existing Semia run
+  directories can be inspected without re-running scan or invoking an LLM.
+- Repair artifacts under the run directory, including `repair_result.json`
+  and `patched/SKILL.md`, plus bundled plugin zipapps that include the repair
+  command.
+
+### Fixed
+
+- Repair tracing now respects quoted Datalog literals, numeric literals, and
+  `_` wildcards when matching rule heads and body conjuncts, which keeps
+  repair prompts focused on the facts that actually triggered a finding.
+
 ## [0.1.0] - 2026-05-11
 
 Initial public release. Semia ships a deterministic Skill Behavior
@@ -128,4 +147,5 @@ release pipeline.
   `Apache-2.0`. `package_build_check.py` and
   `validate_plugin_manifests.py` enforce it.
 
+[0.1.1]: https://github.com/berabuddies/Semia/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/berabuddies/Semia/releases/tag/v0.1.0

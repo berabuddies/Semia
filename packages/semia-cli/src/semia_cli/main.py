@@ -29,10 +29,12 @@ SYNTHESIS_PLATEAU_MIN_IMPROVEMENT_DEFAULT = 0.01
 
 
 def _get_version() -> str:
-    try:
-        return importlib.metadata.version("semia")
-    except importlib.metadata.PackageNotFoundError:
-        return "0.1.0+unknown"
+    for distribution_name in ("semia-audit", "semia"):
+        try:
+            return importlib.metadata.version(distribution_name)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+    return "0.1.1+unknown"
 
 
 def main(argv: list[str] | None = None) -> int:

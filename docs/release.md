@@ -112,8 +112,8 @@ clawhub skill publish \
   packages/semia-plugins/openclaw/skills/semia \
   --slug semia \
   --name "Semia" \
-  --version 0.1.0 \
-  --changelog "Release 0.1.0"
+  --version 0.1.1 \
+  --changelog "Release 0.1.1"
 ```
 
 End users install with:

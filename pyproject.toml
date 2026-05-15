@@ -5,7 +5,7 @@ backend-path = ["build_backend"]
 
 [project]
 name = "semia-audit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Skill Behavior Mapping for AI agent skill auditing."
 readme = "README.md"
 requires-python = ">=3.11"

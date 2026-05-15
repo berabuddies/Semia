@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CLI_SRC = REPO_ROOT / "packages" / "semia-cli" / "src"
@@ -463,6 +464,20 @@ class SemiaCliTests(unittest.TestCase):
             sys.stderr = old_stderr
         self.assertEqual(ctx.exception.code, 0)
         self.assertIn("semia ", stdout.getvalue())
+
+    def test_version_prefers_semia_audit_distribution_metadata(self) -> None:
+        calls: list[str] = []
+
+        def fake_version(distribution_name: str) -> str:
+            calls.append(distribution_name)
+            if distribution_name == "semia-audit":
+                return "0.1.1"
+            raise importlib.metadata.PackageNotFoundError(distribution_name)
+
+        with mock.patch.object(importlib.metadata, "version", side_effect=fake_version):
+            self.assertEqual(main_module._get_version(), "0.1.1")
+
+        self.assertEqual(calls, ["semia-audit"])
 
     def _run(self, argv: list[str]) -> tuple[int, str, str]:
         stdout = io.StringIO()
