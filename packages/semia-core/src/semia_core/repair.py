@@ -17,14 +17,15 @@ from typing import Any
 from .artifacts import Fact, Finding
 from .facts import parse_facts
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. Datalog rule parser
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class DLRule:
     """One clause of a Datalog rule: head :- body1, body2, ..."""
+
     head: str
     head_name: str
     head_args: list[str]
@@ -47,30 +48,34 @@ def parse_dl_rules(dl_path: Path) -> list[DLRule]:
 
 
 def _parse_dl_rules_from_text(text: str) -> list[DLRule]:
-    text = re.sub(r'//.*', '', text)
-    text = re.sub(r'^\.(decl|output|type)\b[^.]*\.', '', text, flags=re.MULTILINE)
-    text = re.sub(r'^#include\b.*$', '', text, flags=re.MULTILINE)
+    text = re.sub(r"//.*", "", text)
+    text = re.sub(r"^\.(decl|output|type)\b[^.]*\.", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^#include\b.*$", "", text, flags=re.MULTILINE)
 
     rules: list[DLRule] = []
-    for m in re.finditer(r'(label_\w+)\(([^)]*)\)\s*:-\s*(.*?)\.', text, re.DOTALL):
-        rules.append(DLRule(
-            head=f"{m.group(1)}({m.group(2).strip()})",
-            head_name=m.group(1),
-            head_args=[a.strip() for a in _split_args(m.group(2))],
-            body=_parse_body(m.group(3)),
-        ))
+    for m in re.finditer(r"(label_\w+)\(([^)]*)\)\s*:-\s*(.*?)\.", text, re.DOTALL):
+        rules.append(
+            DLRule(
+                head=f"{m.group(1)}({m.group(2).strip()})",
+                head_name=m.group(1),
+                head_args=[a.strip() for a in _split_args(m.group(2))],
+                body=_parse_body(m.group(3)),
+            )
+        )
     return rules
 
 
 def _split_args(s: str) -> list[str]:
     args, depth, current = [], 0, ""
     for ch in s:
-        if ch == '(':
+        if ch == "(":
             depth += 1
-        elif ch == ')':
+        elif ch == ")":
             depth -= 1
-        elif ch == ',' and depth == 0:
-            args.append(current); current = ""; continue
+        elif ch == "," and depth == 0:
+            args.append(current)
+            current = ""
+            continue
         current += ch
     if current.strip():
         args.append(current)
@@ -78,14 +83,14 @@ def _split_args(s: str) -> list[str]:
 
 
 def _parse_body(raw: str) -> list[str]:
-    raw = re.sub(r'\s+', ' ', raw.strip())
+    raw = re.sub(r"\s+", " ", raw.strip())
     conjuncts, depth, current = [], 0, ""
     for ch in raw:
-        if ch == '(':
+        if ch == "(":
             depth += 1
-        elif ch == ')':
+        elif ch == ")":
             depth -= 1
-        if ch == ',' and depth == 0:
+        if ch == "," and depth == 0:
             if current.strip():
                 conjuncts.append(current.strip())
             current = ""
@@ -100,9 +105,11 @@ def _parse_body(raw: str) -> list[str]:
 # 2. Finding tracer
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class TracedConjunct:
     """A rule body conjunct matched against concrete facts."""
+
     conjunct_template: str
     matched_facts: list[Fact]
     is_negation: bool = False
@@ -113,6 +120,7 @@ class TracedConjunct:
 @dataclass
 class TracedFinding:
     """A finding fully traced to its causal facts and source."""
+
     label: str
     fields: list[str]
     rule: DLRule
@@ -139,7 +147,7 @@ def trace_findings(
 
         for rule in (r for r in rules if r.head_name == label):
             bindings: dict[str, str] = {}
-            for arg, val in zip(rule.head_args, ffields):
+            for arg, val in zip(rule.head_args, ffields, strict=False):
                 arg = arg.strip().strip('"')
                 if not arg.startswith('"') and not arg.isdigit():
                     bindings[arg] = val
@@ -148,7 +156,7 @@ def trace_findings(
             for conj_str in rule.body:
                 is_neg = conj_str.strip().startswith("!")
                 clean = conj_str.strip().lstrip("!")
-                cm = re.match(r'(\w+)\(([^)]*)\)', clean)
+                cm = re.match(r"(\w+)\(([^)]*)\)", clean)
                 if not cm:
                     conjuncts.append(TracedConjunct(conj_str, [], is_neg))
                     continue
@@ -161,9 +169,9 @@ def trace_findings(
                 for fact in fact_index.get(rel, []):
                     if len(fact.args) != len(bound):
                         continue
-                    if all(b is None or b == a for b, a in zip(bound, fact.args)):
+                    if all(b is None or b == a for b, a in zip(bound, fact.args, strict=True)):
                         matched.append(fact)
-                        for a, v in zip(cargs, fact.args):
+                        for a, v in zip(cargs, fact.args, strict=True):
                             if a not in bindings and not a.startswith('"'):
                                 bindings[a] = v
 
@@ -199,11 +207,13 @@ def locate_in_source(
                     if score > best_score:
                         best_score, best_unit = score, unit
                 if best_unit and best_score > 3:
-                    conj.source_locations.append({
-                        "file": best_unit.get("source_file", ""),
-                        "line_start": best_unit.get("line_start", 0),
-                        "line_end": best_unit.get("line_end", 0),
-                    })
+                    conj.source_locations.append(
+                        {
+                            "file": best_unit.get("source_file", ""),
+                            "line_start": best_unit.get("line_start", 0),
+                            "line_end": best_unit.get("line_end", 0),
+                        }
+                    )
 
 
 def deduplicate_by_label(traced: list[TracedFinding]) -> list[TracedFinding]:
@@ -314,7 +324,8 @@ def _fmt_rule(tf: TracedFinding) -> str:
         neg = "¬ " if conj.is_negation else ""
         n = len(conj.matched_facts)
         status = (
-            f"← {n} match" if n
+            f"← {n} match"
+            if n
             else ("← absent (negation satisfied)" if conj.is_negation else "← unmatched")
         )
         lines.append(f"  {neg}{conj.conjunct_template}  {status}")
@@ -362,14 +373,15 @@ def _fmt_neighborhood(
 # 4. Patcher
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def parse_patch_response(response: str) -> dict[str, Any] | None:
     """Extract a JSON patch from an LLM response."""
-    cleaned = re.sub(r'^```(?:json)?\s*\n', '', response.strip())
-    cleaned = re.sub(r'\n```\s*$', '', cleaned.strip())
+    cleaned = re.sub(r"^```(?:json)?\s*\n", "", response.strip())
+    cleaned = re.sub(r"\n```\s*$", "", cleaned.strip())
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
-        m = re.search(r'\{[\s\S]*\}', response)
+        m = re.search(r"\{[\s\S]*\}", response)
         if m:
             try:
                 return json.loads(m.group())

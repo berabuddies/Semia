@@ -739,9 +739,7 @@ def _summarize_result(result: Any) -> str | None:
         warnings = result.get("warnings", 0)
         match = result.get("evidence_match_rate")
         match_s = f"{match:.3f}" if isinstance(match, int | float) else "n/a"
-        return (
-            f"Checked: {valid}, errors={errors}, warnings={warnings}, " f"evidence_match={match_s}"
-        )
+        return f"Checked: {valid}, errors={errors}, warnings={warnings}, evidence_match={match_s}"
     if status == "detected":
         findings = result.get("findings")
         backend = result.get("backend")

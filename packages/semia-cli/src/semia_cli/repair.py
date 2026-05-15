@@ -1,8 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Repair pipeline — LLM-mediated patch generation for flagged skills.
-
-
-"""
+"""Repair pipeline — LLM-mediated patch generation for flagged skills."""
 
 from __future__ import annotations
 
@@ -25,8 +22,13 @@ from semia_core.repair import (
     trace_findings,
 )
 
-from . import core_adapter
-from .llm_config import SynthesisConfig, SynthesisSettings, default_base_url, default_model, default_provider
+from .llm_config import (
+    SynthesisConfig,
+    SynthesisSettings,
+    default_base_url,
+    default_model,
+    default_provider,
+)
 from .llm_providers import call_provider
 
 
@@ -47,6 +49,7 @@ def repair(
     Returns a summary dict with before/after finding counts and patch info.
     """
     import sys
+
     out = stdout or sys.stdout
 
     # ── Load scan artifacts ──
@@ -141,13 +144,15 @@ def repair(
         if patched_md.exists():
             current_skill_md = patched_md.read_text()
 
-        repairs.append({
-            "label": tf.label,
-            "analysis": patch.get("analysis", ""),
-            "strategy": patch.get("fix_strategy", ""),
-            "conjunct": patch.get("conjunct_to_break", ""),
-            "applied": applied,
-        })
+        repairs.append(
+            {
+                "label": tf.label,
+                "analysis": patch.get("analysis", ""),
+                "strategy": patch.get("fix_strategy", ""),
+                "conjunct": patch.get("conjunct_to_break", ""),
+                "applied": applied,
+            }
+        )
 
     # ── Write outputs ──
     result_path = run_dir / "repair_result.json"
