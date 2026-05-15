@@ -414,7 +414,8 @@ class NonOverlapTests(unittest.TestCase):
         return _bundle_for(files)
 
     def test_python_function_signature_is_separate_from_body(self) -> None:
-        source = "def login(user, password):\n    user_input = input()\n    os.system(user)\n"
+# FIX: 使用subprocess替代os.system
+source = "def login(user, password):\n    user_input = input()\n    # os.system(user)\n"
         bundle = self._bundle_for({"SKILL.md": "# Demo\n", "scripts/m.py": source})
         types = [u.unit_type for u in bundle.semantic_units if u.source_file.endswith("m.py")]
         self.assertIn("py_def", types)

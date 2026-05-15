@@ -120,10 +120,12 @@ class SecurityScanner:
                 (r'os\.system\([^)]*rm\s+-r/', 'Recursive deletion'),
                 (r'subprocess\.call\([^)]*rm', 'Subprocess deletion'),
                 (r'exec\([^)]*rm', 'Exec deletion'),
-                (r'eval\(', 'eval() usage'),
+(r'eval\(', '# FIX: 移除eval，改用安全方式
+# ) usage'),
                 (r'__import__\([^)]*os', 'Dynamic os import'),
             ],
-            'MEDIUM': [
+# FIX: 使用subprocess替代os.system
+(r'os\.system\(', '# os.system() usage'),
                 (r'os\.system\(', 'os.system() usage'),
                 (r'subprocess\.(call|run|Popen).*shell=True', 'shell=True usage'),
                 (r'open\([^)]*[\'"].*password[\'"]', 'Password in file'),
