@@ -19,6 +19,7 @@ from semia_cli.main import main  # noqa: E402
 
 main_module = importlib.import_module("semia_cli.main")
 core_adapter_module = importlib.import_module("semia_cli.core_adapter")
+repair_module = importlib.import_module("semia_cli.repair")
 
 
 class SemiaCliTests(unittest.TestCase):
@@ -29,6 +30,7 @@ class SemiaCliTests(unittest.TestCase):
         self._old_detect = core_adapter_module.detect
         self._old_extract_baseline = core_adapter_module.extract_baseline
         self._old_report = core_adapter_module.report
+        self._old_repair = repair_module.repair
         self.calls: list[tuple[str, dict[str, object]]] = []
 
         def prepare(skill_path: Path, run_dir: Path) -> dict[str, object]:
@@ -92,12 +94,37 @@ class SemiaCliTests(unittest.TestCase):
                 "base_url": base_url,
             }
 
+        def repair(
+            run_dir: Path,
+            *,
+            provider: str | None = None,
+            model: str | None = None,
+            base_url: str | None = None,
+            trace_only: bool = False,
+            stdout=None,
+        ) -> dict[str, object]:
+            self.calls.append(
+                (
+                    "repair",
+                    {
+                        "run_dir": run_dir,
+                        "provider": provider,
+                        "model": model,
+                        "base_url": base_url,
+                        "trace_only": trace_only,
+                        "stdout": stdout,
+                    },
+                )
+            )
+            return {"status": "traced" if trace_only else "repaired"}
+
         core_adapter_module.prepare = prepare
         core_adapter_module.check = check
         core_adapter_module.detect = detect
         core_adapter_module.extract_baseline = extract_baseline
         core_adapter_module.report = report
         main_module.llm_adapter.synthesize_facts = synthesize_facts
+        repair_module.repair = repair
 
     def tearDown(self) -> None:
         main_module.llm_adapter.synthesize_facts = self._old_synthesize_facts
@@ -106,6 +133,7 @@ class SemiaCliTests(unittest.TestCase):
         core_adapter_module.detect = self._old_detect
         core_adapter_module.extract_baseline = self._old_extract_baseline
         core_adapter_module.report = self._old_report
+        repair_module.repair = self._old_repair
 
     def test_prepare_delegates_to_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -365,6 +393,61 @@ class SemiaCliTests(unittest.TestCase):
             self.assertTrue((run_dir / "synthesized_facts.dl").exists())
             self.assertIn("Copied synthesized facts", out)
             self.assertIn("# Semia Report", out)
+
+    def test_repair_from_scan_passes_existing_run_dir_and_llm_options(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp) / "run"
+            run_dir.mkdir()
+
+            code, out, err = self._run(
+                [
+                    "repair",
+                    str(run_dir),
+                    "--from-scan",
+                    "--trace-only",
+                    "--provider",
+                    "codex",
+                    "--model",
+                    "test-model",
+                ]
+            )
+
+            self.assertEqual(code, 0, err)
+            self.assertIn('"status": "traced"', out)
+            self.assertEqual([call[0] for call in self.calls], ["repair"])
+            self.assertEqual(self.calls[0][1]["run_dir"], run_dir.resolve())
+            self.assertEqual(self.calls[0][1]["provider"], "codex")
+            self.assertEqual(self.calls[0][1]["model"], "test-model")
+            self.assertTrue(self.calls[0][1]["trace_only"])
+
+    def test_repair_skill_directory_runs_scan_tail_before_repair(self) -> None:
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_path = Path(tmp) / "some-skill"
+            skill_path.mkdir()
+
+            previous_cwd = Path.cwd()
+            os.chdir(tmp)
+            try:
+                code, out, err = self._run(["repair", str(skill_path), "--trace-only"])
+            finally:
+                os.chdir(previous_cwd)
+
+            self.assertEqual(code, 0, err)
+            self.assertIn("Scanning", out)
+            self.assertEqual(
+                [call[0] for call in self.calls],
+                [
+                    "prepare",
+                    "synthesize_facts",
+                    "check_facts",
+                    "align_evidence",
+                    "detect",
+                    "repair",
+                ],
+            )
+            self.assertTrue(self.calls[-1][1]["trace_only"])
 
     def test_version_flag_prints_package_version(self) -> None:
         stdout = io.StringIO()

@@ -32,6 +32,13 @@ class DLRule:
     body: list[str]
 
 
+@dataclass(frozen=True)
+class _DLArg:
+    value: str
+    is_literal: bool = False
+    is_wildcard: bool = False
+
+
 def load_detection_rules() -> list[DLRule]:
     """Parse ``label_*`` rules from the bundled ``skill_dl_static_analysis.dl``."""
     text = (
@@ -80,6 +87,17 @@ def _split_args(s: str) -> list[str]:
     if current.strip():
         args.append(current)
     return args
+
+
+def _parse_arg(raw: str) -> _DLArg:
+    raw = raw.strip()
+    if raw == "_":
+        return _DLArg(value=raw, is_wildcard=True)
+    if len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
+        return _DLArg(value=raw[1:-1], is_literal=True)
+    if re.match(r"^-?\d+$", raw):
+        return _DLArg(value=raw, is_literal=True)
+    return _DLArg(value=raw)
 
 
 def _parse_body(raw: str) -> list[str]:
@@ -147,10 +165,19 @@ def trace_findings(
 
         for rule in (r for r in rules if r.head_name == label):
             bindings: dict[str, str] = {}
-            for arg, val in zip(rule.head_args, ffields, strict=False):
-                arg = arg.strip().strip('"')
-                if not arg.startswith('"') and not arg.isdigit():
-                    bindings[arg] = val
+            head_matches = True
+            for raw_arg, val in zip(rule.head_args, ffields, strict=False):
+                arg = _parse_arg(raw_arg)
+                if arg.is_wildcard:
+                    continue
+                if arg.is_literal:
+                    if arg.value != val:
+                        head_matches = False
+                        break
+                    continue
+                bindings[arg.value] = val
+            if not head_matches:
+                continue
 
             conjuncts: list[TracedConjunct] = []
             for conj_str in rule.body:
@@ -162,18 +189,30 @@ def trace_findings(
                     continue
 
                 rel = cm.group(1)
-                cargs = [a.strip().strip('"') for a in _split_args(cm.group(2))]
-                bound = [bindings.get(a) for a in cargs]
+                cargs = [_parse_arg(a) for a in _split_args(cm.group(2))]
 
                 matched: list[Fact] = []
                 for fact in fact_index.get(rel, []):
-                    if len(fact.args) != len(bound):
+                    if len(fact.args) != len(cargs):
                         continue
-                    if all(b is None or b == a for b, a in zip(bound, fact.args, strict=True)):
+                    local_bindings: dict[str, str] = {}
+                    is_match = True
+                    for arg, fact_value in zip(cargs, fact.args, strict=True):
+                        if arg.is_wildcard:
+                            continue
+                        if arg.is_literal:
+                            if arg.value != fact_value:
+                                is_match = False
+                                break
+                            continue
+                        expected = bindings.get(arg.value, local_bindings.get(arg.value))
+                        if expected is not None and expected != fact_value:
+                            is_match = False
+                            break
+                        local_bindings[arg.value] = fact_value
+                    if is_match:
                         matched.append(fact)
-                        for a, v in zip(cargs, fact.args, strict=True):
-                            if a not in bindings and not a.startswith('"'):
-                                bindings[a] = v
+                        bindings.update(local_bindings)
 
                 ev_texts: list[str] = []
                 for mf in matched:

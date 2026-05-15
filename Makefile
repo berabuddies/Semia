@@ -44,11 +44,13 @@ test:
 	    tests.cli.test_semia_cli \
 	    tests.cli.test_semia_cli_integration \
 	    tests.cli.test_llm_adapter \
+	    tests.cli.test_repair \
 	    tests.core.test_datalog_eval \
 	    tests.core.test_detector_report \
 	    tests.core.test_facts_checker_evidence \
 	    tests.core.test_pipeline \
 	    tests.core.test_prepare \
+	    tests.core.test_repair \
 	    tests.core.test_skill_corpus
 
 coverage:
@@ -56,11 +58,13 @@ coverage:
 	    tests.cli.test_semia_cli \
 	    tests.cli.test_semia_cli_integration \
 	    tests.cli.test_llm_adapter \
+	    tests.cli.test_repair \
 	    tests.core.test_datalog_eval \
 	    tests.core.test_detector_report \
 	    tests.core.test_facts_checker_evidence \
 	    tests.core.test_pipeline \
 	    tests.core.test_prepare \
+	    tests.core.test_repair \
 	    tests.core.test_skill_corpus
 	$(PYTHON) -m coverage xml -o coverage.xml
 	$(PYTHON) -m coverage report
