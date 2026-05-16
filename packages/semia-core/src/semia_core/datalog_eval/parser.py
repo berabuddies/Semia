@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Parser for the Soufflé Datalog subset used by Semia SDL rules.
 
 Supported surface:

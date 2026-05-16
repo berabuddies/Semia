@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Small stdlib-only build backend for Semia's editable CLI installs.
 
 The repository intentionally has no runtime dependencies. This backend lets
@@ -46,6 +46,8 @@ SDIST_FILES = (
     "CHANGELOG.md",
     "SECURITY.md",
     "PRIVACY.md",
+    "ADVANCED_USAGE.md",
+    "DEVELOPMENT.md",
 )
 
 # Directories included recursively. Caches and bytecode inside them are
@@ -196,7 +198,7 @@ def _metadata() -> str:
         f"Name: {NAME}\n"
         f"Version: {VERSION}\n"
         f"Summary: {SUMMARY}\n"
-        "Author: berabuddies\n"
+        "Author: RiemaLabs\n"
         f"License-Expression: {LICENSE_EXPRESSION}\n"
         f"{license_file_lines}"
         "Requires-Python: >=3.11\n"

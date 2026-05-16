@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import shutil
 from pathlib import Path
 from typing import Any, TextIO
@@ -163,9 +164,18 @@ def repair(
         "repairs": repairs,
         "patched_skill_md": str(patched_dir / "SKILL.md"),
     }
+    report_path = run_dir / "report.md"
+    if report_path.exists():
+        result["report_md"] = str(report_path)
+    apply_command = _build_apply_command(run_dir, patched_dir / "SKILL.md")
+    if apply_command:
+        result["apply_command"] = apply_command
     result_path.write_text(json.dumps(result, indent=2) + "\n")
     print(f"\nRepair result: {result_path}", file=out)
     print(f"Patched SKILL.md: {patched_dir / 'SKILL.md'}", file=out)
+    if apply_command:
+        print("\nTo create a sibling patched skill directory, run:", file=out)
+        print(f"  {apply_command}", file=out)
 
     return result
 
@@ -200,6 +210,36 @@ def _find_skill_md(run_dir: Path) -> Path | None:
     if prepared.exists():
         return prepared
     return None
+
+
+def _build_apply_command(run_dir: Path, patched_skill_md: Path) -> str | None:
+    source_dir = _source_skill_dir(run_dir)
+    if source_dir is None:
+        return None
+    target_dir = source_dir.with_name(f"{source_dir.name}_patched")
+    target_skill_md = target_dir / "SKILL.md"
+    return (
+        f"mkdir -p {shlex.quote(str(target_dir))} && "
+        f"cp {shlex.quote(str(patched_skill_md))} {shlex.quote(str(target_skill_md))}"
+    )
+
+
+def _source_skill_dir(run_dir: Path) -> Path | None:
+    meta_path = run_dir / "prepare_metadata.json"
+    if not meta_path.exists():
+        return None
+    meta = json.loads(meta_path.read_text())
+    source = meta.get("source", {})
+    root_raw = source.get("root")
+    if not root_raw:
+        return None
+    root = Path(root_raw)
+    main_raw = source.get("main_path")
+    if main_raw:
+        main_path = Path(main_raw)
+        if main_path.name in {"SKILL.md", "skill.md"}:
+            return main_path.parent
+    return root
 
 
 def _print_trace(unique: list[TracedFinding], out: TextIO) -> None:

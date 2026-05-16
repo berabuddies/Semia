@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Assert that CHANGELOG.md contains a section for the given version.
 
 Invoked from the release workflow once a `v*` tag has been pushed. The check

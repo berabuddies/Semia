@@ -5,13 +5,13 @@ backend-path = ["build_backend"]
 
 [project]
 name = "semia-audit"
-version = "0.1.1"
+version = "0.1.2"
 description = "Skill Behavior Mapping for AI agent skill auditing."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-authors = [{ name = "berabuddies" }]
+authors = [{ name = "RiemaLabs" }]
 keywords = ["agent-skills", "static-analysis", "security", "souffle"]
 classifiers = [
     "Development Status :: 3 - Alpha",

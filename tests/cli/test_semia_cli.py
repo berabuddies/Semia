@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 from __future__ import annotations
 
 import importlib
@@ -414,12 +414,15 @@ class SemiaCliTests(unittest.TestCase):
             )
 
             self.assertEqual(code, 0, err)
+            self.assertIn("Report:", out)
             self.assertIn('"status": "traced"', out)
-            self.assertEqual([call[0] for call in self.calls], ["repair"])
+            self.assertEqual([call[0] for call in self.calls], ["report", "repair"])
             self.assertEqual(self.calls[0][1]["run_dir"], run_dir.resolve())
-            self.assertEqual(self.calls[0][1]["provider"], "codex")
-            self.assertEqual(self.calls[0][1]["model"], "test-model")
-            self.assertTrue(self.calls[0][1]["trace_only"])
+            self.assertEqual(self.calls[0][1]["format"], "md")
+            self.assertEqual(self.calls[1][1]["run_dir"], run_dir.resolve())
+            self.assertEqual(self.calls[1][1]["provider"], "codex")
+            self.assertEqual(self.calls[1][1]["model"], "test-model")
+            self.assertTrue(self.calls[1][1]["trace_only"])
 
     def test_repair_skill_directory_runs_scan_tail_before_repair(self) -> None:
         import os
@@ -445,6 +448,7 @@ class SemiaCliTests(unittest.TestCase):
                     "check_facts",
                     "align_evidence",
                     "detect",
+                    "report",
                     "repair",
                 ],
             )

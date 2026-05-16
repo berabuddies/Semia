@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Argparse entry point for the Semia CLI MVP."""
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def _get_version() -> str:
             return importlib.metadata.version(distribution_name)
         except importlib.metadata.PackageNotFoundError:
             continue
-    return "0.1.1+unknown"
+    return "0.1.2+unknown"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -415,6 +415,8 @@ def _repair(args: argparse.Namespace, stdout: TextIO) -> None:
         )
         _print_result(stdout, core_adapter.detect(run_dir), fallback=f"Detected for {run_dir}")
 
+    _write_repair_report(run_dir, stdout)
+
     # Run repair
     print("", file=stdout)
     result = repair_mod.repair(
@@ -426,6 +428,11 @@ def _repair(args: argparse.Namespace, stdout: TextIO) -> None:
         stdout=stdout,
     )
     _print_result(stdout, result, fallback="Repair complete")
+
+
+def _write_repair_report(run_dir: Path, stdout: TextIO) -> None:
+    core_adapter.report(run_dir, "md")
+    print(f"Report: {run_dir / 'report.md'}", file=stdout)
 
 
 def _existing_path(path: Path, label: str) -> Path:

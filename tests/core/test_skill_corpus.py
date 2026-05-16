@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Corpus-level smoke tests over the dev_dataset SKILL.md fixtures.
 
 These tests exercise the deterministic prepare pipeline against a snapshot of

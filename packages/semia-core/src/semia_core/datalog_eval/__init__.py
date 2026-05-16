@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Pure-Python Datalog evaluator for the Soufflé subset used by Semia rules.
 
 Implements just enough of Soufflé's surface to run the SDL detector rules

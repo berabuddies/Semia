@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Stdlib-only Markdown AST parser for the CommonMark subset Semia consumes.
 
 The parser runs in two passes: a block tokenizer classifies each line, then a

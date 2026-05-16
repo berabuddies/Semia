@@ -5,6 +5,32 @@ All notable changes to Semia are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-05-16
+
+### Added
+
+- `semia repair` now keeps a Markdown audit report at
+  `.semia/runs/<skill-slug>/report.md` before patch generation and records
+  the report path in `repair_result.json`.
+- Repair output now includes an `apply_command` that copies the proposed
+  `patched/SKILL.md` into a sibling `<skill>_patched/SKILL.md` directory
+  after review.
+- `ADVANCED_USAGE.md` and `DEVELOPMENT.md` split advanced workflows,
+  architecture notes, and contributor setup out of the README.
+
+### Changed
+
+- The README is now a shorter quick-start surface with links to advanced usage
+  and development docs, plus a citation block for the Semia paper.
+- Copyright and package/plugin author metadata now identify RiemaLabs as the
+  rights holder.
+
+### Removed
+
+- README trademark policy text, the duplicate host-plugin install section,
+  and the `--offline-baseline` CI smoke-test example were removed from the
+  main README.
+
 ## [0.1.1] - 2026-05-15
 
 ### Added
@@ -147,5 +173,6 @@ release pipeline.
   `Apache-2.0`. `package_build_check.py` and
   `validate_plugin_manifests.py` enforce it.
 
+[0.1.2]: https://github.com/berabuddies/Semia/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/berabuddies/Semia/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/berabuddies/Semia/releases/tag/v0.1.0

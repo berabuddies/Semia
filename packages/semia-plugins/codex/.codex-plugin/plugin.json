@@ -1,9 +1,9 @@
 {
   "name": "semia",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Representation Synthesis workflow for auditing agent skills in Codex.",
   "author": {
-    "name": "berabuddies",
+    "name": "RiemaLabs",
     "email": "hongbo@riema.xyz",
     "url": "https://github.com/berabuddies"
   },
@@ -22,7 +22,7 @@
     "displayName": "Semia",
     "shortDescription": "Audit agent skills with Semia SDL V2.",
     "longDescription": "Runs a plugin-first Semia workflow where Codex performs Stage 2 evidence-backed SDL extraction and deterministic Semia tools prepare, validate, detect, and report findings.",
-    "developerName": "berabuddies",
+    "developerName": "RiemaLabs",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",

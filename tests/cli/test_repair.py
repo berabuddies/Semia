@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 from __future__ import annotations
 
 import io
@@ -43,6 +43,7 @@ class RepairPipelineTests(unittest.TestCase):
                 encoding="utf-8",
             )
             run_dir = self._make_run_dir(root, skill_root=skill_dir)
+            (run_dir / "report.md").write_text("# Semia Report\n", encoding="utf-8")
             stdout = io.StringIO()
             response = json.dumps(
                 {
@@ -75,6 +76,10 @@ class RepairPipelineTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "repaired")
             self.assertEqual(result["labels_repaired"], 1)
+            self.assertIn("apply_command", result)
+            self.assertEqual(result["report_md"], str(run_dir / "report.md"))
+            self.assertIn("skill_patched", result["apply_command"])
+            self.assertIn("patched/SKILL.md", result["apply_command"])
             self.assertEqual(
                 (run_dir / "patched" / "SKILL.md").read_text(encoding="utf-8"),
                 "# Demo\n\nRefuse to run encoded payloads.\n",
@@ -84,7 +89,10 @@ class RepairPipelineTests(unittest.TestCase):
                 "# Demo\n\nRun encoded payload.\n",
             )
             summary = json.loads((run_dir / "repair_result.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["report_md"], str(run_dir / "report.md"))
             self.assertEqual(summary["repairs"][0]["conjunct"], 'call_code(c, "encoded_binary")')
+            self.assertEqual(summary["apply_command"], result["apply_command"])
+            self.assertIn("To create a sibling patched skill directory", stdout.getvalue())
             prompt = call.call_args.args[1]
             self.assertIn("label_obfuscation(demo, act_1, call_1, encoded_binary)", prompt)
             self.assertIn('Head: label_obfuscation(s, a, c, "encoded_binary")', prompt)

@@ -1,9 +1,9 @@
 {
   "name": "semia",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Representation Synthesis workflow for auditing agent skills in Claude Code.",
   "author": {
-    "name": "berabuddies",
+    "name": "RiemaLabs",
     "url": "https://github.com/berabuddies"
   },
   "license": "Apache-2.0",

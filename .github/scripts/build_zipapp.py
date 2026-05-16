@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Build a byte-reproducible zipapp.
 
 Stdlib-only replacement for ``python -m zipapp``. The standard tool relies on

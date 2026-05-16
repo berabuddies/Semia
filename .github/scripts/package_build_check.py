@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Run a stdlib package metadata build check for the scaffold."""
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """LLM-driven verdict on a Semia run.
 
 After the deterministic ``prepare → synthesize → detect → report`` flow

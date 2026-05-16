@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Verify that every file we require in a release is present.
 
 Extracted from the previous inline `python -c` in `make release-check` so the

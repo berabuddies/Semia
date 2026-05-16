@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Direct API bindings to semia_core. The CLI delegates here so that test
 doubles can monkeypatch a single import surface."""
 

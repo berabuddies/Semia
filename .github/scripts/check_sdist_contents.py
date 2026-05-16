@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Assert the built sdist does not contain dev state or test scaffolding.
 
 Regression guard for build_backend/semia_build.py. The previous blacklist

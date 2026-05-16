@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 berabuddies
+# Copyright 2026 RiemaLabs
 """Deterministic skill source loading and semantic unit extraction."""
 
 from __future__ import annotations
