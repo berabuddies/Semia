@@ -79,7 +79,7 @@ class RepairPipelineTests(unittest.TestCase):
             self.assertIn("apply_command", result)
             self.assertEqual(result["report_md"], str(run_dir / "report.md"))
             self.assertIn("skill_patched", result["apply_command"])
-            self.assertIn("patched/SKILL.md", result["apply_command"])
+            self.assertIn(str(run_dir / "patched" / "SKILL.md"), result["apply_command"])
             self.assertEqual(
                 (run_dir / "patched" / "SKILL.md").read_text(encoding="utf-8"),
                 "# Demo\n\nRefuse to run encoded payloads.\n",
