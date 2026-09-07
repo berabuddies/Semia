@@ -6,8 +6,10 @@ from __future__ import annotations
 
 from .llm_config import (
     DEFAULT_ANTHROPIC_BASE_URL,
+    DEFAULT_ATLAS_BASE_URL,
     DEFAULT_MODEL,
     DEFAULT_MODEL_ANTHROPIC,
+    DEFAULT_MODEL_ATLAS,
     DEFAULT_MODEL_CLAUDE,
     DEFAULT_MODEL_CODEX,
     DEFAULT_MODEL_RESPONSES,
@@ -16,6 +18,7 @@ from .llm_config import (
     DEFAULT_RESPONSES_BASE_URL,
     HTTP_PROVIDERS,
     PROVIDER_ANTHROPIC,
+    PROVIDER_ATLAS,
     PROVIDER_CLAUDE,
     PROVIDER_CODEX,
     PROVIDER_RESPONSES,
@@ -32,6 +35,8 @@ from .synthesis_loop import synthesize_facts
 
 __all__ = [
     "DEFAULT_ANTHROPIC_BASE_URL",
+    "DEFAULT_ATLAS_BASE_URL",
+    "DEFAULT_MODEL_ATLAS",
     "DEFAULT_MODEL",
     "DEFAULT_MODEL_ANTHROPIC",
     "DEFAULT_MODEL_CLAUDE",
@@ -44,6 +49,7 @@ __all__ = [
     "LlmSynthesisConfigError",
     "LlmSynthesisError",
     "PROVIDER_ANTHROPIC",
+    "PROVIDER_ATLAS",
     "PROVIDER_CLAUDE",
     "PROVIDER_CODEX",
     "PROVIDER_RESPONSES",

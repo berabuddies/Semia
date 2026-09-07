@@ -137,7 +137,7 @@ stages are deterministic, no key required). If you run Semia via a host
 plugin (Codex / Claude Code / OpenClaw) skip this — the host agent already
 does synthesize for you.
 
-Four providers are supported. Pick one and export its credentials:
+Five providers are supported. Pick one and export its credentials:
 
 ```bash
 # OpenAI Responses API — default; also works for DeepSeek / OpenRouter / vLLM
@@ -148,6 +148,11 @@ export OPENAI_API_KEY=sk-...
 export SEMIA_LLM_PROVIDER=anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
 # optional: export ANTHROPIC_BASE_URL=https://api.anthropic.com
+
+# Atlas Cloud Chat Completions API
+export SEMIA_LLM_PROVIDER=atlas
+export ATLASCLOUD_API_KEY=your-key-here
+# optional: export ATLASCLOUD_MODEL=openai/gpt-5.5
 
 # Locally-installed Claude Code CLI (uses your Claude Code login)
 export SEMIA_LLM_PROVIDER=claude

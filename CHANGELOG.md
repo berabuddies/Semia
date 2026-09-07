@@ -5,6 +5,13 @@ All notable changes to Semia are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Added an optional `atlas` synthesis provider using Atlas Cloud's
+  OpenAI-compatible Chat Completions API.
+
 ## [0.1.3] - 2026-05-27
 
 ### Fixed

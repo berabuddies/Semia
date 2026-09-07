@@ -2,7 +2,7 @@
 # Copyright 2026 RiemaLabs
 """Configuration shared by Semia LLM synthesis modules.
 
-Semia routes synthesis through one of four **providers**:
+Semia routes synthesis through one of five **providers**:
 
 HTTP wire formats (use ``--base-url`` and the matching ``*_API_KEY``):
 
@@ -12,6 +12,8 @@ HTTP wire formats (use ``--base-url`` and the matching ``*_API_KEY``):
 - ``anthropic`` — Anthropic Messages API
   (``POST {ANTHROPIC_BASE_URL}/v1/messages``). Works against
   api.anthropic.com and Anthropic-compatible relays.
+- ``atlas`` — Atlas Cloud's OpenAI-compatible Chat Completions API
+  (``POST {ATLASCLOUD_BASE_URL}/chat/completions``).
 
 Local CLI shell-outs (only ``--model`` is effective; auth is inherited from
 the host CLI's config):
@@ -51,10 +53,11 @@ class LlmSynthesisConfigError(LlmSynthesisError):
 # Providers fall into two transport classes.
 PROVIDER_RESPONSES = "responses"
 PROVIDER_ANTHROPIC = "anthropic"
+PROVIDER_ATLAS = "atlas"
 PROVIDER_CODEX = "codex"
 PROVIDER_CLAUDE = "claude"
 
-HTTP_PROVIDERS = (PROVIDER_RESPONSES, PROVIDER_ANTHROPIC)
+HTTP_PROVIDERS = (PROVIDER_RESPONSES, PROVIDER_ANTHROPIC, PROVIDER_ATLAS)
 CLI_PROVIDERS = (PROVIDER_CODEX, PROVIDER_CLAUDE)
 SUPPORTED_PROVIDERS = HTTP_PROVIDERS + CLI_PROVIDERS
 
@@ -65,6 +68,7 @@ DEFAULT_PROVIDER = PROVIDER_RESPONSES
 # ``codex`` has no default — when omitted, the host CLI picks.
 DEFAULT_MODEL_RESPONSES = "gpt-5.5"
 DEFAULT_MODEL_ANTHROPIC = "claude-opus-4-7"
+DEFAULT_MODEL_ATLAS = "openai/gpt-5.5"
 DEFAULT_MODEL_CLAUDE = "claude-opus-4-7"
 DEFAULT_MODEL_CODEX: str | None = None
 
@@ -75,6 +79,7 @@ DEFAULT_MODEL = DEFAULT_MODEL_RESPONSES
 # for ``codex``/``claude``. Override via env or ``--base-url``.
 DEFAULT_RESPONSES_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_ANTHROPIC_BASE_URL = "https://api.anthropic.com"
+DEFAULT_ATLAS_BASE_URL = "https://api.atlascloud.ai/v1"
 
 DEFAULT_TIMEOUT_SECONDS = 600
 DEFAULT_SYNTHESIS_ITERATIONS = 5
@@ -185,6 +190,8 @@ def default_model(value: str | None = None, provider: str | None = None) -> str 
         return os.environ.get("OPENAI_MODEL") or DEFAULT_MODEL_RESPONSES
     if provider == PROVIDER_ANTHROPIC:
         return os.environ.get("ANTHROPIC_MODEL") or DEFAULT_MODEL_ANTHROPIC
+    if provider == PROVIDER_ATLAS:
+        return os.environ.get("ATLASCLOUD_MODEL") or DEFAULT_MODEL_ATLAS
     if provider == PROVIDER_CLAUDE:
         return os.environ.get("ANTHROPIC_MODEL") or DEFAULT_MODEL_CLAUDE
     if provider == PROVIDER_CODEX:
@@ -210,6 +217,8 @@ def default_base_url(value: str | None = None, provider: str = DEFAULT_PROVIDER)
         return value.rstrip("/")
     if provider == PROVIDER_ANTHROPIC:
         return (os.environ.get("ANTHROPIC_BASE_URL") or DEFAULT_ANTHROPIC_BASE_URL).rstrip("/")
+    if provider == PROVIDER_ATLAS:
+        return (os.environ.get("ATLASCLOUD_BASE_URL") or DEFAULT_ATLAS_BASE_URL).rstrip("/")
     return (os.environ.get("OPENAI_BASE_URL") or DEFAULT_RESPONSES_BASE_URL).rstrip("/")
 
 
