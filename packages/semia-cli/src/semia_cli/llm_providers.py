@@ -2,16 +2,18 @@
 # Copyright 2026 RiemaLabs
 """Transport-layer IO for Semia synthesis.
 
-Four providers are supported. The HTTP pair talks raw HTTP (no third-party
+Five providers are supported. The HTTP providers talk raw HTTP (no third-party
 SDK); the CLI pair shells out to a locally-installed agent CLI.
 
 HTTP providers honor ``--model``, ``--base-url`` and the matching env-var
-auth (``OPENAI_API_KEY`` / ``ANTHROPIC_API_KEY``):
+auth (``OPENAI_API_KEY`` / ``ANTHROPIC_API_KEY`` / ``ATLASCLOUD_API_KEY``):
 
 - :data:`~.llm_config.PROVIDER_RESPONSES` — OpenAI Responses API, streamed
   via Server-Sent Events.
 - :data:`~.llm_config.PROVIDER_ANTHROPIC` — Anthropic Messages API, also
   streamed via SSE.
+- :data:`~.llm_config.PROVIDER_ATLAS` — Atlas Cloud's OpenAI-compatible Chat
+  Completions API, streamed via SSE.
 
 CLI providers only honor ``--model``; auth is inherited from the host CLI's
 config:
@@ -40,6 +42,7 @@ from urllib import error, request
 from .llm_config import (
     DEFAULT_MODEL_CLAUDE,
     PROVIDER_ANTHROPIC,
+    PROVIDER_ATLAS,
     PROVIDER_CLAUDE,
     PROVIDER_CODEX,
     PROVIDER_RESPONSES,
@@ -72,6 +75,12 @@ def call_provider(
         base_url = default_base_url(config.base_url, PROVIDER_ANTHROPIC) or ""
         return _run_with_retries(
             lambda: _run_anthropic_messages(prompt, config.model, base_url),
+            settings.provider_retries,
+        )
+    if config.provider == PROVIDER_ATLAS:
+        base_url = default_base_url(config.base_url, PROVIDER_ATLAS) or ""
+        return _run_with_retries(
+            lambda: _run_atlas_chat_completions(prompt, config.model, base_url),
             settings.provider_retries,
         )
     if config.provider == PROVIDER_CODEX:
@@ -347,6 +356,79 @@ def _extract_anthropic_text(payload: dict[str, Any]) -> str:
     if pieces:
         return "\n".join(pieces)
     raise LlmSynthesisError("Anthropic response did not include text output")
+
+
+# ---------------------------------------------------------------------------
+# Atlas Cloud Chat Completions API
+# ---------------------------------------------------------------------------
+
+
+def _run_atlas_chat_completions(prompt: str, model: str | None, base_url: str) -> str:
+    if not model:
+        raise LlmSynthesisConfigError("atlas provider requires a model name")
+    api_key = _first_env("SEMIA_ATLASCLOUD_API_KEY", "ATLASCLOUD_API_KEY")
+    if not api_key:
+        raise LlmSynthesisConfigError("atlas provider selected, but ATLASCLOUD_API_KEY is not set")
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": True,
+    }
+    req = request.Request(
+        f"{base_url}/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+        },
+        method="POST",
+    )
+    try:
+        with request.urlopen(req, timeout=timeout_seconds()) as response:
+            return _read_atlas_chat_payload(response)
+    except error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise LlmSynthesisError(f"Atlas Cloud API failed ({exc.code}): {detail}") from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise LlmSynthesisError(f"Atlas Cloud API failed: {exc}") from exc
+
+
+def _read_atlas_chat_payload(response: Any) -> str:
+    content_type = response.headers.get("Content-Type", "")
+    if "text/event-stream" not in content_type:
+        return _extract_chat_completion_text(json.loads(response.read().decode("utf-8")))
+
+    text_parts: list[str] = []
+    for _event_type, data in _iter_sse_events(_iter_response_lines(response)):
+        if data == "[DONE]":
+            break
+        payload = json.loads(data)
+        if payload.get("error"):
+            raise LlmSynthesisError(f"Atlas Cloud API failed: {payload['error']}")
+        for choice in payload.get("choices", []):
+            delta = choice.get("delta") if isinstance(choice, dict) else None
+            content = delta.get("content") if isinstance(delta, dict) else None
+            if isinstance(content, str):
+                text_parts.append(content)
+    content = "".join(text_parts)
+    if not content:
+        raise LlmSynthesisError("Atlas Cloud response did not include streamed text output")
+    return content
+
+
+def _extract_chat_completion_text(payload: dict[str, Any]) -> str:
+    pieces: list[str] = []
+    for choice in payload.get("choices", []):
+        if not isinstance(choice, dict):
+            continue
+        message = choice.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if isinstance(content, str):
+            pieces.append(content)
+    if pieces:
+        return "\n".join(pieces)
+    raise LlmSynthesisError("Atlas Cloud response did not include text output")
 
 
 # ---------------------------------------------------------------------------

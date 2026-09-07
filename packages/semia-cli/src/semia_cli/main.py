@@ -467,9 +467,10 @@ def _atomic_write_text(path: Path, content: str) -> None:
 def _add_llm_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--provider",
-        choices=("responses", "anthropic", "codex", "claude", "openai"),
+        choices=("responses", "anthropic", "atlas", "codex", "claude", "openai"),
         help="LLM provider for synthesize; one of: responses (OpenAI Responses "
-        "API, default), anthropic (Anthropic Messages API), codex (codex CLI), "
+        "API, default), anthropic (Anthropic Messages API), atlas (Atlas Cloud "
+        "Chat Completions API), codex (codex CLI), "
         "claude (Claude Code CLI). `openai` is an alias for `responses`. "
         "Default: SEMIA_LLM_PROVIDER or responses.",
     )

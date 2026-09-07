@@ -17,7 +17,7 @@ CLI_SRC = REPO_ROOT / "packages" / "semia-cli" / "src"
 sys.path.insert(0, str(CLI_SRC))
 
 from semia_cli import llm_adapter, synthesis_loop  # noqa: E402
-from semia_cli.llm_config import LlmSynthesisError  # noqa: E402
+from semia_cli.llm_config import LlmSynthesisConfigError, LlmSynthesisError  # noqa: E402
 from semia_cli.synthesis_patch import (  # noqa: E402
     _looks_like_fact,
     apply_incremental_patch,
@@ -197,6 +197,71 @@ class LlmAdapterTests(unittest.TestCase):
             )
             body = json_body(urlopen.call_args.args[0].data)
             self.assertEqual(body["model"], "deepseek-v4")
+
+    def test_atlas_provider_reads_streamed_chat_completion(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            (run_dir / "synthesis_prompt.md").write_text("Emit facts.", encoding="utf-8")
+            (run_dir / "prepared_skill.md").write_text("# Demo\n", encoding="utf-8")
+
+            class FakeStream:
+                def __init__(self) -> None:
+                    self._chunks = iter(
+                        [
+                            b'data: {"choices":[{"delta":{"content":"skill(\\"demo\\")."}}]}\n\n',
+                            b"data: [DONE]\n\n",
+                        ]
+                    )
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, traceback):
+                    return False
+
+                @property
+                def headers(self) -> dict[str, str]:
+                    return {"Content-Type": "text/event-stream"}
+
+                def read(self, _size: int = -1) -> bytes:
+                    return next(self._chunks, b"")
+
+            with (
+                mock.patch.dict(
+                    "os.environ",
+                    {"ATLASCLOUD_API_KEY": "test-key", "SEMIA_SYNTHESIS_N_ITERATIONS": "1"},
+                    clear=True,
+                ),
+                mock.patch(
+                    "semia_cli.llm_providers.request.urlopen", return_value=FakeStream()
+                ) as urlopen,
+            ):
+                result = llm_adapter.synthesize_facts(
+                    run_dir, provider="atlas", validator=_perfect_validator
+                )
+
+            self.assertEqual(result["provider"], "atlas")
+            self.assertEqual(result["model"], "openai/gpt-5.5")
+            self.assertEqual(result["base_url"], "https://api.atlascloud.ai/v1")
+            self.assertEqual(
+                (run_dir / "synthesized_facts.dl").read_text(encoding="utf-8"), 'skill("demo").\n'
+            )
+            req = urlopen.call_args.args[0]
+            self.assertEqual(req.full_url, "https://api.atlascloud.ai/v1/chat/completions")
+            self.assertEqual(
+                json_body(req.data)["messages"], [{"role": "user", "content": mock.ANY}]
+            )
+
+    def test_atlas_provider_requires_api_key(self) -> None:
+        from semia_cli import llm_providers
+
+        with (
+            mock.patch.dict("os.environ", {}, clear=True),
+            self.assertRaisesRegex(LlmSynthesisConfigError, "ATLASCLOUD_API_KEY"),
+        ):
+            llm_providers._run_atlas_chat_completions(
+                "Emit facts.", "openai/gpt-5.5", "https://api.atlascloud.ai/v1"
+            )
 
     def test_claude_default_model_reads_anthropic_model(self) -> None:
         with mock.patch.dict("os.environ", {"ANTHROPIC_MODEL": "sonnet"}, clear=True):
